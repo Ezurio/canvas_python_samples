@@ -18,10 +18,6 @@ count = 0
 #--------------------------------------
 def cb_notify_enabled(event_object):
     global do_notify
-#    print("Name: ", event_object.name)
-#    print("Event type: ", event_object.type)
-#    print(ble.GATT_SERVER_EVENT_CCCD_NOTIFY)
-
     if event_object.type == ble.GattServer.EVENT_CCCD_NONE:
         print(event_object.name, " disabled")
         print("----------------")
@@ -87,7 +83,7 @@ advert.add_ltv(1, flag_bytes, False)
 advert.add_tag_string(9, "Canvas Notify", False)
 advert.set_phys(ble.PHY_1M, ble.PHY_1M)
 advert.set_properties(True, True, False)
-advert.set_interval(250, 250)
+advert.set_interval(240, 250)
 advert.start()
 
 # Define the gatt server and callbacks
