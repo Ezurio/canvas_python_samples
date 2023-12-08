@@ -124,6 +124,7 @@ def ad_update(restart:bool):
     advertiser.add_ltv(0x01, bytes([0x06]), False)
     advertiser.add_tag_string(0x09, config['ble_name'], False)
     advertiser.add_ltv(0xff, bytes(manu_data), False)
+    advertiser.add_canvas_data(0, config['network_id'], False)
     if restart:
         advertiser.start()
     else:
@@ -521,8 +522,14 @@ def config_save():
     size = f.write(cbor)
     f.close()
 
+def connection_cb(conn):
+    pass
+
+def disconnection_cb(conn):
+    # restart advertising
+    ad_update(True)
+
 # Initialize the LED
-boot_led_strip = None
 main_led_strip = canvas.LEDStrip("", 12)
 set_leds(0)
 
@@ -533,6 +540,7 @@ unicast_start_time = time.ticks_ms()
 
 # Initialize and start advertising
 canvas_ble.init()
+canvas_ble.set_periph_callbacks(connection_cb, disconnection_cb)
 ad_init()
 ad_update(True)
 
