@@ -1,3 +1,5 @@
-# canvas_python_samples_development
+# Canvas Python Samples
 
-This repo contains the development versions of the Canvas python sample applications.
+This repository contains various sample scripts and applications for use with
+Laird Connectivity Canvas MicroPython firmware. See README.md inside of each
+subdirectory for specific information about using the scripts or applications.
