@@ -6,7 +6,7 @@ from machine import I2C
 import time
 
 app_id='tiltad'
-app_ver='1.3.0'
+app_ver='1.4.0'
 
 config = { }
 event_data = { }
@@ -127,23 +127,24 @@ def init_application():
     # Init BLE
     canvas_ble.init()
     canvas_ble.set_periph_callbacks(ble_connect, ble_disconnect)
-    devid = canvas_ble.addr_to_str(canvas_ble.my_addr())[12:14] + canvas_ble.addr_to_str(canvas_ble.my_addr())[15:17]
+    devid = canvas_ble.addr_to_str(canvas_ble.my_addr())[10:12] + canvas_ble.addr_to_str(canvas_ble.my_addr())[12:14]
     event_data['ble_name'] = config['ble_name'] + "-" + devid
     event_data['adv'] = canvas_ble.Advertiser()
     event_data['adv'].set_properties(True, False, True)
     event_data['adv'].set_interval(config["reporting_interval_ms"], config["reporting_interval_ms"] + 10)
     event_data['adv'].clear_buffer(False)
     event_data['adv'].add_ltv(0x01, bytes([0x06]), False)
-    event_data['adv'].add_tag_string(0x09, "BT510", False)
+    event_data['adv'].add_tag_string(0x09, event_data['ble_name'], False)
     event_data['adv'].add_ltv(0xff, event_data['hdr'] + b"\xb00\xb00\xb00\xb00\xb00\xb00\x00", False)
     # Start BLE Advertising
     event_data['adv'].start()
     # Print help text
     print(' \r\n\r\nBT510 tilt sensor script ' + app_ver)
     print('------------------------------')
+    print("          BLE Name: " + event_data['ble_name'])
     print('Reporting Interval: ' + str(config["reporting_interval_ms"]) + 'ms')
-    print('Press ctrl-c within 5 seconds to access the REPL\r\n')
-    time.sleep_ms(5000)
+    print('Press ctrl-c within 15 seconds to access the REPL and cancel low power mode\r\n')
+    time.sleep_ms(15000)
     print('Entering low power mode, UART REPL will turn off in 20 seconds...\r\n')
     # Start countdown to disable REPL UART
     machine.console_sleep()
