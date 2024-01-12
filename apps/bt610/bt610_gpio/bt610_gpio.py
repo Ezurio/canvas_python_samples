@@ -1,3 +1,6 @@
+app_id='xbit_610_gpio'
+app_ver='0.1.0'
+
 from machine import Pin
 
 # Pin identified by gpio-dynamic label (device tree)

@@ -1,3 +1,6 @@
+app_id='xbit_510_tiltad'
+app_ver='0.1.0'
+
 import canvas
 import canvas_ble
 import machine

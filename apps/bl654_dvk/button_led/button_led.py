@@ -1,7 +1,7 @@
-import machine
-
-app_id = 'button_led'
+app_id = 'xbit_bl654_button_led'
 app_ver = '1.0.1'
+
+import machine
 
 # callback on button 1 press
 led1_on = False

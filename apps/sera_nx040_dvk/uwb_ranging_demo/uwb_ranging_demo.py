@@ -1,3 +1,6 @@
+app_id='xbit_sera_ranging_demo'
+app_ver='0.1.0'
+
 import canvas
 import canvas_ble
 import canvas_uwb

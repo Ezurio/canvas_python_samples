@@ -1,4 +1,4 @@
-app_id='pscan'
+app_id='xbit_bl654_pscan'
 app_ver='1.1.1'
 
 import canvas_ble
