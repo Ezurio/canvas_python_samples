@@ -1,4 +1,4 @@
-app_id='xbit_610_gpio'
+app_id='xbit_bt610_gpio'
 app_ver='0.1.0'
 
 from machine import Pin
