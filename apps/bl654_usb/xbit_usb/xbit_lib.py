@@ -1,8 +1,11 @@
 import canvas_ble
+import canvas
 import binascii
+import time
 
 scanner = None
 connection = None
+timer = None
 gatt_client = None
 rpc_id = 0
 # store a scan rpc id separate so it can be included in scan results
@@ -24,24 +27,44 @@ scan_rpc_id = 0
 # Intended to be called by off-board host applications.
 # These functions form xbitLib's external-facing API.
 
+def scannerStopTimerCallback(arg):
+    global scanner
+    global timer
+    scanner.stop()
+
 # Start a BLE scan
-def scanStart(active):
+def scanStart(active, timeout = 0):
     global scanner
     global rpc_id
     global scan_rpc_id
+    global timer
     if scanner != None:
         scan_rpc_id = rpc_id
-        scanner.start(active)
+        try:
+            scanner.start(active)
+        except:
+            print("{'i':" + str(scan_rpc_id) + ",'e':'NOSCAN'}")
+            return
         print("{'i':" + str(scan_rpc_id) + "}")
+        if timeout != 0:
+            timer = canvas.Timer(timeout, False, scannerStopTimerCallback, None)
+            timer.start()
     else:
         print("{'i':" + str(scan_rpc_id) + ",'e':'NOSCAN'}")
 
 # Stop a BLE scan
 def scanStop():
     global scanner
+    global timer
     global rpc_id
     if scanner != None:
-        scanner.stop()
+        try:
+            scanner.stop()
+        except:
+            print("{'i':" + str(rpc_id) + ",'e':'NOSTOP'}")
+            return
+        if timer != None:
+            timer.stop()
         print("{'i':" + str(rpc_id) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOSCAN'}")

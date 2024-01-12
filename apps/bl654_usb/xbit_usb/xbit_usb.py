@@ -1,5 +1,5 @@
 app_id='xbit_usb'
-app_ver='0.0.3'
+app_ver='0.1.0'
 
 import sys
 import xbit_lib
@@ -9,7 +9,7 @@ import xbit_lib
 # -----------------------------------------------------------
 # def scanStart(active)
 # example of calling 'scanStart(0)':
-# {'x':'scanStart(0)','i':1}
+# {'x':'scanStart(1,5)','i':1}
 
 # def scanStop()
 # example of calling 'scanStop()':
