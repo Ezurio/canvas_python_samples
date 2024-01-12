@@ -74,7 +74,11 @@ def scanFilterReset():
     global scanner
     global rpc_id
     if scanner != None:
-        scanner.filter_reset()
+        try:
+            scanner.filter_reset()
+        except:
+            print("{'i':" + str(rpc_id) + ",'e':'NORESET'}")
+            return
         print("{'i':" + str(rpc_id) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOSCAN'}")
@@ -84,7 +88,11 @@ def scanFilterAdd(filter_type_str, filter_value):
     global scanner
     global rpc_id
     if scanner != None:
-        scanner.filter_add(eval('canvas_ble.Scanner.' + filter_type_str), filter_value)
+        try:
+            scanner.filter_add(eval('canvas_ble.Scanner.' + filter_type_str), filter_value)
+        except:
+            print("{'i':" + str(rpc_id) + ",'e':'EXISTS'}")
+            return
         print("{'i':" + str(rpc_id) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOSCAN'}")
@@ -97,7 +105,11 @@ def bleConnect(addr_str, phy_str):
         # report that we are already connected?
         print("{'i':" + str(rpc_id) + ",'e':'ALREADYCONNECTED'}")
         return
-    connection = canvas_ble.connect(binascii.unhexlify(addr_str), eval('canvas_ble.' + phy_str), con_cb, discon_cb)
+    try:
+        connection = canvas_ble.connect(binascii.unhexlify(addr_str), eval('canvas_ble.' + phy_str), con_cb, discon_cb)
+    except:
+        print("{'i':" + str(rpc_id) + ",'e':'NOCONN'}")
+        return
     if connection != None:
         print("{'i':" + str(rpc_id) + "}")
     else:
@@ -108,7 +120,11 @@ def bleDisconnect():
     global connection
     global rpc_id
     if connection != None:
-        connection.disconnect()
+        try:
+            connection.disconnect()
+        except:
+            print("{'i':" + str(rpc_id) + ",'e':'NODISC'}")
+            return
         print("{'i':" + str(rpc_id) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOCONN'}")
@@ -118,7 +134,11 @@ def bleGetGattDictionary():
     global gatt_client
     global rpc_id
     if gatt_client != None:
-        gatt_dict = gatt_client.get_dict()
+        try:
+            gatt_dict = gatt_client.get_dict()
+        except:
+            print("{'i':" + str(rpc_id) + ", 'e':'NODICT'}")
+            return
         print("{'i':" + str(rpc_id) + ",'j':" + str(gatt_dict) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
@@ -142,7 +162,11 @@ def bleNotifyEnable(char_name):
     global gatt_client
     global rpc_id
     if gatt_client != None:
-        gatt_client.enable(char_name, canvas_ble.GattClient.CCCD_STATE_NOTIFY)
+        try:
+            gatt_client.enable(char_name, canvas_ble.GattClient.CCCD_STATE_NOTIFY)
+        except:
+            print("{'i':" + str(rpc_id) + ", 'e':'EXISTS'}")
+            return
         print("{'i':" + str(rpc_id) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
@@ -152,7 +176,11 @@ def bleNotifyDisable(char_name):
     global gatt_client
     global rpc_id
     if gatt_client != None:
-        gatt_client.enable(char_name, canvas_ble.GattClient.CCCD_STATE_DISABLE)
+        try:
+            gatt_client.enable(char_name, canvas_ble.GattClient.CCCD_STATE_DISABLE)
+        except:
+            print("{'i':" + str(rpc_id) + ", 'e':'NOEXIST'}")
+            return
         print("{'i':" + str(rpc_id) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
@@ -162,7 +190,11 @@ def bleWrite(char_name, data):
     global gatt_client
     global rpc_id
     if gatt_client != None:
-        gatt_client.write(char_name, bytes(data))
+        try:
+            gatt_client.write(char_name, bytes(data))
+        except:
+            print("{'i':" + str(rpc_id) + ", 'e':'WERROR'}")
+            return
         print("{'i':" + str(rpc_id) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
