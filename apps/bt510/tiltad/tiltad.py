@@ -1,5 +1,5 @@
-app_id='xbit_510_tiltad'
-app_ver='0.1.0'
+app_id='xbit_bt510_tiltad'
+app_ver='1.4.0'
 
 import canvas
 import canvas_ble
@@ -7,9 +7,6 @@ import machine
 from machine import Pin
 from machine import I2C
 import time
-
-app_id='tiltad'
-app_ver='1.4.0'
 
 config = { }
 event_data = { }
