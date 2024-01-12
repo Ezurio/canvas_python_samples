@@ -6,7 +6,7 @@ from machine import I2C
 import time
 
 app_id='tiltad'
-app_ver='1.4.0'
+app_ver='1.5.0'
 
 config = { }
 event_data = { }
@@ -21,6 +21,7 @@ def load_config():
     # Set default configuration values
     config["reporting_interval_ms"] = 200
     config["ble_name"] = "BT510"
+    config["network_id"] = 0xffff
     
     # Load configuration from a file
     try:
@@ -136,6 +137,7 @@ def init_application():
     event_data['adv'].add_ltv(0x01, bytes([0x06]), False)
     event_data['adv'].add_tag_string(0x09, event_data['ble_name'], False)
     event_data['adv'].add_ltv(0xff, event_data['hdr'] + b"\xb00\xb00\xb00\xb00\xb00\xb00\x00", False)
+    event_data['adv'].add_canvas_data(0, config['network_id'], False)
     # Start BLE Advertising
     event_data['adv'].start()
     # Print help text
