@@ -100,7 +100,7 @@ print("Starting GATT server")
 my_gattserver.start()
 print("-----------------")
 
-# Loop until a disconnection occurrs
+# Loop until a disconnection occurs
 while discon == False:
     time.sleep_ms(1000)
     if connection != None and do_indicate:

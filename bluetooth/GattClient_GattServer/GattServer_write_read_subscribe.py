@@ -4,11 +4,21 @@ import time
 
 def s1c1_cb(event):
     if event.type == ble.GattServer.EVENT_ATTR_VALUE:
+        print("Event", event.type)
         print("Name: ", event.name)
         print("Data: ", event.data.decode())
+        print("Data Hex: ", event.data.hex())
         print("Connection", event.connection)
-        print("Event", event.type)
-        print("----------------")
+
+
+def generic_cb(event):
+    print("Event", event.type)
+    print("Name: ", event.name)
+    if event.data is not None:
+        print("Data: ", event.data.decode())
+        print("Data Hex: ", event.data.hex())
+    if event.connection is not None:
+        print("Connection", event.connection)
 
 
 def cb_con(conn):
@@ -22,7 +32,10 @@ def cb_disconnected(conn):
     global disconnected
     print("Disconnected: ", conn)
     disconnected = True
-    advert.start()
+    # Should be defined by application script
+    global adv
+    if adv is not None:
+        adv.start()
 
 
 gatt_table = {
@@ -44,7 +57,9 @@ gatt_table = {
             "Length": 20,
             "Read Encryption": "None",
             "Write Encryption": "None",
-            "Capability": "Read"
+            "Capability": ["Read", "Notify", "Indicate"],
+            "Callback": generic_cb
+
         }
     }
 }
@@ -55,28 +70,12 @@ ble.set_periph_callbacks(cb_con, cb_disconnected)
 my_gattserver = ble.GattServer()
 my_gattserver.build_from_dict(gatt_table)
 
-# Setup flag byte array
-flags = [6]
-flag_bytes = bytes(flags)
-
-# Configure advertisements
-ble.init()
-advert = ble.Advertiser()
-advert.stop()
-advert.clear_buffer(False)
-advert.add_ltv(1, flag_bytes, False)
-advert.add_tag_string(9, "Canvas Read/Write", False)
-advert.set_phys(ble.PHY_1M, ble.PHY_1M)
-advert.set_properties(True, True, False)
-advert.set_interval(250, 250)
-
 
 def main_loop():
     print("")
     print("Gatt Server Read / Write example")
     print("BLE address: ", ble.addr_to_str(ble.my_addr()))
     my_gattserver.start()
-    advert.start()
     loop = 0
     while True:
         time.sleep_ms(1000)
