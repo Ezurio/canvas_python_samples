@@ -6,10 +6,10 @@ import canvas
 PERIODIC_TIMER = 5000 # 5 seconds
 
 # How long to wait for the modem to be ready
-MODEM_READY_LIMIT = 9000 # 15 minutes
+MODEM_READY_LIMIT = 200 # 20 seconds
 
 # How long to wait for the network to be ready
-NETWORK_READY_LIMIT = 200 # 20 seconds
+NETWORK_READY_LIMIT = 9000 # 15 minutes
 
 class NetHelper:
     def modem_cb(self, e: tuple):
