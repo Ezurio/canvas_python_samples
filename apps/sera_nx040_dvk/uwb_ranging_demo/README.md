@@ -5,8 +5,8 @@ used with the [Xbit Desktop tool](https://github.com/LairdCP/Canvas_Xbit_Desktop
 to visualize ranging data.
 
 ## Loading onto the Sera NX040 DVK
-The Sera NX040 DVK must be running [Canvas Firmware](https://github.com/LairdCP/BL654_USB_Adapter_Canvas_Firmware).
-Tou can load the Python scripts from this repository as listed below using
+The Sera NX040 DVK must be running [Canvas Firmware](https://github.com/LairdCP/Sera_NX040_Firmware).
+You can load the Python scripts from this repository as listed below using
 [Xbit tools for VS Code](https://marketplace.visualstudio.com/items?itemName=rfp-canvas.xbit-vsc).
 
 ### uwb_ranging_demo.py

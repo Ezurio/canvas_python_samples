@@ -5,8 +5,8 @@ radio. The calibration value in early modules was incorrect and this script can
 be used to correct it.
 
 ## Loading onto the Sera NX040 DVK
-The Sera NX040 DVK must be running [Canvas Firmware](https://github.com/LairdCP/BL654_USB_Adapter_Canvas_Firmware).
-Tou can load the Python scripts from this repository as listed below using
+The Sera NX040 DVK must be running [Canvas Firmware](https://github.com/LairdCP/Sera_NX040_Firmware).
+You can load the Python scripts from this repository as listed below using
 [Xbit tools for VS Code](https://marketplace.visualstudio.com/items?itemName=rfp-canvas.xbit-vsc).
 
 ### set_antenna_delay_calibration.py
