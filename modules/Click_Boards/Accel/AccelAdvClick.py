@@ -92,25 +92,20 @@ def init_ble():
 	global adv
 	global config
 	adv = canvas_ble.Advertiser()
-	adv.set_properties(True, False, True)
 	reporting_interval_ms = config["reporting_interval_ms"]
 	adv.set_interval(reporting_interval_ms, reporting_interval_ms + 50)
-	adv.set_phys(canvas_ble.PHY_1M, canvas_ble.PHY_1M)
+	adv.set_properties(True, True, False)
 	adv.clear_buffer(True)
-	if "LYRA_24" in board:
-		adv.set_properties(True, True, False)
-	else:
-		adv.set_properties(True, False, False)
-
+	adv.add_canvas_data(0, 0, True)
 
 def update_ad(arr):
 	global adv
 	global ads_started
 	devid = canvas_ble.addr_to_str(canvas_ble.my_addr())[12:14] + canvas_ble.addr_to_str(canvas_ble.my_addr())[15:17]
 	adv.clear_buffer(False)
-	adv.add_ltv(0x01, bytes([0x06]), False)
-	adv.add_tag_string(0x09, config['ble_name'] + '-' + devid, False)
-	adv.add_ltv(0xff, arr, False)
+	adv.add_ltv(canvas_ble.AD_TYPE_FLAGS, bytes([0x06]), False)
+	adv.add_tag_string(canvas_ble.AD_TYPE_NAME_COMPLETE, config['ble_name'] + '-' + devid, False)
+	adv.add_ltv(canvas_ble.AD_TYPE_MANU_SPECIFIC, arr, False)
 	if ads_started == False:
 		ret = adv.start()
 		ads_started = True

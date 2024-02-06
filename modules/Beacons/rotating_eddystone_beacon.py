@@ -25,12 +25,13 @@ eddy_objects = [eddy_url,eddy_uri,eddy_tlm]
 ble.init()
 advert = ble.Advertiser()
 advert.stop()
+advert.clear_buffer(True)
+advert.add_canvas_data(0, 0, True)
 advert.clear_buffer(False)
 data = bytes(eddy_url.get_beacon())
 advert.add_data(data, False)
-advert.set_phys(ble.PHY_1M, ble.PHY_1M)
 advert.set_properties(True, True, False)
-advert.set_interval(250, 250)
+advert.set_interval(200, 250)
 advert.start()
 
 # Callback to cycle the advert

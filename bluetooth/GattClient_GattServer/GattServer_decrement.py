@@ -65,17 +65,16 @@ my_gattserver = ble.GattServer()
 my_gattserver.build_from_dict(gatt_table)
 
 # Setup advertisement with "Canvas" as the name.
-flags = [6]
-my_bytes=bytes(flags)
 ble.init()
 adv = ble.Advertiser()
 adv.stop()
+adv.clear_buffer(True)
+adv.add_canvas_data(0, 0, True)
 adv.clear_buffer(False)
-adv.add_ltv(1, my_bytes, False)
-adv.add_tag_string(9, "Canvas", False)
-adv.set_phys(ble.PHY_1M, ble.PHY_1M)
+adv.add_ltv(ble.AD_TYPE_FLAGS, bytes([6]), False)
+adv.add_tag_string(ble.AD_TYPE_NAME_COMPLETE, "Canvas", False)
 adv.set_properties(True, True, False)
-adv.set_interval(240, 250)
+adv.set_interval(200, 250)
 
 def main_loop():
     print("")
