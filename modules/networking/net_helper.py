@@ -64,7 +64,8 @@ class NetHelper:
         self.callback = cb
 
         # Start periodic callback
-        self.periodic_timer = canvas.Timer(PERIODIC_TIMER, False, self.periodic_cb, None)
+        self.periodic_timer = canvas.Timer(PERIODIC_TIMER, True, self.periodic_cb, None)
+        self.periodc_timer.start()
 
         # Initialize modem, if present
         try:
