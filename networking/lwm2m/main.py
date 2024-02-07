@@ -3,6 +3,8 @@ import machine
 import time
 from canvas_net import Lwm2m
 from net_helper import NetHelper
+import binascii
+import machine
 
 ##############################################################################
 # Configuration
@@ -10,11 +12,13 @@ from net_helper import NetHelper
 # Fill out the following configuration parameters to match your environment.
 
 bootstrap = 0 # or 1
-security_mode = Lwm2m.SECURITY_PSK # or Lwm2m.SECURITY_NOSEC
+security_mode = Lwm2m.SECURITY_NOSEC # or Lwm2m.SECURITY_PSK
 psk_id = "my-psk-id"
 psk = "my-psk"
-server_url = "coaps://lwm2m.example.com:5684"
-endpoint_name = "my-device"
+server_url = "coap://leshan.eclipseprojects.io:5683"
+# Endpoint name is a unique identifier for the device.
+# Use the device's unique ID to generate a unique endpoint name.
+endpoint_name = "my-device_" +  binascii.hexlify(machine.unique_id()).decode()
 
 #
 ##############################################################################
@@ -79,5 +83,6 @@ print("Waiting for network")
 net = NetHelper(None)
 net.wait_for_ready()
 
+print("Starting LwM2M wih endpoint name: {}".format(endpoint_name))
 # Start the LwM2M client
 lwm2m.start(bootstrap != 0)
