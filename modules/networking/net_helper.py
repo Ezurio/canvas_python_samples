@@ -1,15 +1,19 @@
 import time
 import network
 import canvas
+import struct
+from machine import Pin
+import os
 
 # How often to check for network state
-PERIODIC_TIMER = 5000 # 5 seconds
+PERIODIC_TIMER = 5000  # 5 seconds
 
 # How long to wait for the modem to be ready
-MODEM_READY_LIMIT = 200 # 20 seconds
+MODEM_READY_LIMIT = 200  # 20 seconds
 
 # How long to wait for the network to be ready
-NETWORK_READY_LIMIT = 9000 # 15 minutes
+NETWORK_READY_LIMIT = 9000  # 15 minutes
+
 
 class NetHelper:
     def modem_cb(self, e: tuple):
@@ -19,8 +23,19 @@ class NetHelper:
         # Save initial state
         was_net_ready = self.net_ready
 
+        if e.event == self.modem.EVENT_NETWORK_STATE:
+            if e.data[0] == self.modem.STATE_NETWORK_HOME_NETWORK or e.data[0] == self.modem.STATE_NETWORK_ROAMING:
+                self.net_led.on()
+            else:
+                self.net_led.on()
+        elif e.event == self.modem.EVENT_RSSI:
+            val = struct.unpack("<i", e.data)[0]
+            print("RSSI: {}".format(val))
+        elif e.event == self.modem.EVENT_SINR:
+            val = struct.unpack("<i", e.data)[0]
+            print("SINR: {}".format(val))
         # Check for state change
-        if e.event == self.modem.EVENT_STATE:
+        elif e.event == self.modem.EVENT_STATE:
             if e.data[0] == self.modem.STATE_INITIALIZED:
                 self.modem_ready = True
                 if self.nic.isconnected():
@@ -64,7 +79,8 @@ class NetHelper:
         self.callback = cb
 
         # Start periodic callback
-        self.periodic_timer = canvas.Timer(PERIODIC_TIMER, True, self.periodic_cb, None)
+        self.periodic_timer = canvas.Timer(
+            PERIODIC_TIMER, True, self.periodic_cb, None)
         self.periodic_timer.start()
 
         # Initialize modem, if present
@@ -72,6 +88,11 @@ class NetHelper:
             from canvas_net import Modem
             self.has_modem = True
             self.modem = Modem(self.modem_cb)
+            if "mg100" == os.uname().machine:
+                self.net_led = Pin('LED_RED', Pin.OUT, 0)
+            elif "pinnacle_100_dvk" == os.uname().machine:
+                self.net_led = Pin('LED1', Pin.OUT, 0)
+            self.net_led.off()
         except:
             # No modem, so it's ready
             self.has_modem = False
