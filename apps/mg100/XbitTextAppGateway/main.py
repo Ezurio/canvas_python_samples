@@ -1,7 +1,19 @@
-app_id = 'xbit_mg100_ble_to_mqtt'
-app_ver = '1.1.0'
+import sntp
+import config
+import mqtt
+import binascii
+import machine
+import canvas_net
+import canvas_ble
+import canvas
+from net_helper import NetHelper
+import os
+import time
+import json
+app_id = 'Text App Gateway'
+app_ver = '1.0.0'
 
-# Description: BLE to MQTT bridge
+# Description: Text App to MQTT bridge
 #
 # All configuration for the application is stored in a CBOR file named
 # config.cb. The file is read at startup and the configuration is stored in
@@ -58,11 +70,8 @@ app_ver = '1.1.0'
 #     >>> config.save()
 #
 # The application will enable BLE scanning. When a BLE advertisement
-# matching the filter is found, the temperature value is extracted from
-# the manufacturer-specific data and published to the MQTT broker. If the
-# temperature value changes by more than DELTA_TEMP degrees Celsius, the
-# temperature is published. Otherwise, the temperature is published every
-# PUBLISH_PERIOD milliseconds.
+# matching the filter is found, the message is extracted from
+# the manufacturer-specific data and published to the MQTT broker.
 #
 # The application will connect to the specific LwM2M server and register
 # with it. If lwm2m_bootstrap is set, then the application will register
@@ -70,29 +79,20 @@ app_ver = '1.1.0'
 # lwm2m_bootstrap is not set, then the application will register directly
 # with the LwM2M server.
 
-import time
-import os
-from net_helper import NetHelper
-import canvas
-import canvas_ble
-import canvas_net
-import machine
-import binascii
-import mqtt
-import config
-import sntp
 
-# Always send if delta is greater than this
-DELTA_TEMP = 1.0
+TEXT_SERVICE_UUID = "22ac5df9-f794-46b1-a7ee-f1198f9430bc"
 
 # Send every this many milliseconds
-PUBLISH_PERIOD = 60000
-
-# Print every this many milliseconds
-PRINT_PERIOD = 10000
+PUBLISH_PERIOD = 6000
 
 # LwM2M retry period
-LWM2M_RETRY_PERIOD = 10000 # 10 seconds
+LWM2M_RETRY_PERIOD = 10000  # 10 seconds
+
+# Min time between messages from a device
+DEVICE_MSG_LIMIT_TIME_SEC = 5
+
+# Max number of messages to publish at once
+MAX_MSG_PUBLISH = 8
 
 # BLE scanner
 scanner = None
@@ -101,47 +101,91 @@ scanner = None
 client = None
 
 # Devices dictionary
-#   key: device address (bytes)
-#   value dictionary:
-#      'temp': temperature (float, degrees Celsius)
-#      'last_publish': last time published (int, milliseconds)
 devices = {}
 
+# List of devices to publish
+publish_list = []
+
+num_tracked_devices = 0
+
+
 def scan_cb(evt):
-    publish = False
+    global BLE_LED, num_tracked_devices
 
     # Get manufacturer-specific data from the advertisement
-    m = canvas_ble.find_ltv(0xff, evt.data)
-    if m is None:
+    msg = canvas_ble.find_ltv(0xff, evt.data)
+    if msg is None:
+        return
+    msg = msg[4:].decode()
+
+    name = canvas_ble.find_ltv(9, evt.data)
+    if name is None:
+        return
+    name = name.decode()
+
+    addr = binascii.hexlify(evt.addr).decode()
+    # Check if we've seen this device before
+    if addr not in devices:
+        try:
+            devices[addr] = {'deviceId': addr}
+            devices[addr]['timestamp'] = time.time()
+            devices[addr]['message'] = ''
+            devices[addr]['name'] = name
+            num_tracked_devices += 1
+            print("Tracking device: {} ({})".format(addr, num_tracked_devices))
+        except:
+            print("Error tracking {}. {} tracked.".format(
+                addr, num_tracked_devices))
+            try:
+                del devices[addr]
+            except:
+                pass
+            return
+
+    now = time.time()
+    if now - devices[addr]['timestamp'] < DEVICE_MSG_LIMIT_TIME_SEC:
         return
 
-    # Check if we've seen this device before
-    if evt.addr not in devices:
-        devices[evt.addr] = { 'temp': 0.0, 'last_publish': 0 }
+    last_message = devices[addr]['message']
+    if last_message != msg and len(publish_list) < (MAX_MSG_PUBLISH - 1):
+        BLE_LED.flash()
+        devices[addr]['name'] = name
+        devices[addr]['timestamp'] = time.time()
+        devices[addr]['message'] = msg
+        print("Received: {}".format(devices[addr]))
+        publish_list.append(devices[addr].copy())
 
-    # Get the temperature from the manufacturer-specific data
-    temp_bytes = m[len(m)-2:]
-    temp_val = float(int.from_bytes(temp_bytes, "big"))
-    temp = (((temp_val * 175720)/65536) - 46850) / 1000
 
-    # Check if we should publish
-    if abs(temp - devices[evt.addr]['temp']) >= DELTA_TEMP:
+def mqtt_publish_timer(event):
+    publish = False
+    msg = {
+        'message': {
+            'messages': []
+        }
+    }
+    while len(publish_list) > 0:
         publish = True
-    elif time.ticks_ms() - devices[evt.addr]['last_publish'] >= PUBLISH_PERIOD:
-        publish = True
+        device = publish_list.pop(0)
+        msg['message']['messages'].append(device)
 
-    # Print if necessary
-    if publish or (time.ticks_ms() - devices[evt.addr]['last_print']) >= PRINT_PERIOD:
-        print ("Device: {}, Temperature: {}".format(binascii.hexlify(evt.addr).decode(), temp))
-        devices[evt.addr]['last_print'] = time.ticks_ms()
-
-    # Publish if necessary
     if publish:
-        # Publish the temperature
-        print("Publishing")
-        client.publish('{{"temperature": {}}}'.format(temp))
-        devices[evt.addr]['last_publish'] = time.ticks_ms()
-        devices[evt.addr]['temp'] = temp
+        msg_str = json.dumps(msg)
+        print("Publishing: {}".format(msg_str))
+        client.publish(msg_str)
+
+
+class Led(machine.Pin):
+    def __init__(self, port_pin: any, mode: int, pull: int = machine.Pin.PULL_NONE):
+        super().__init__(port_pin, mode, pull)
+        self.__flash_timer = canvas.Timer(50, False, self.__flash_cb, None)
+
+    def __flash_cb(self, data):
+        self.off()
+
+    def flash(self):
+        self.on()
+        self.__flash_timer.start()
+
 
 class MqttClient:
     def __init__(self, config):
@@ -158,11 +202,11 @@ class MqttClient:
         self.port = config.get("mqtt_port")
         if self.port is None:
             raise Exception("mqtt_port not set in configuration")
-        
+
         self.client_id = config.get("mqtt_client_id")
         if self.client_id is None:
             raise Exception("mqtt_client_id not set in configuration")
-        
+
         self.user = config.get("mqtt_user")
         if self.user is not None:
             self.password = config.get("mqtt_password")
@@ -173,14 +217,16 @@ class MqttClient:
         if self.client_cert_file is not None:
             self.client_key_file = config.get("mqtt_client_key_file")
             if self.client_key_file is None:
-                raise Exception("mqtt_client_key_file not set in configuration")
+                raise Exception(
+                    "mqtt_client_key_file not set in configuration")
 
             self.ca_cert_file = config.get("mqtt_ca_cert_file")
             if self.ca_cert_file is None:
                 raise Exception("mqtt_ca_cert_file not set in configuration")
 
         if self.client_cert_file is None and self.user is None:
-            raise Exception("Either mqtt_client_cert_file or mqtt_user must be set in configuration")
+            raise Exception(
+                "Either mqtt_client_cert_file or mqtt_user must be set in configuration")
 
         self.keepalive = config.get("mqtt_keepalive")
         if self.keepalive is None:
@@ -249,6 +295,7 @@ class MqttClient:
             self.client = None
 
     def publish(self, data):
+        global CLOUD_LED
         if self.client is None:
             try:
                 self.start()
@@ -258,9 +305,11 @@ class MqttClient:
 
         try:
             self.client.publish(self.topic_str, data)
+            CLOUD_LED.flash()
         except:
             print("Publish failed")
             self.stop()
+
 
 class LwM2MClient:
     EVENTS = [
@@ -280,16 +329,17 @@ class LwM2MClient:
         "REG_UPDATE",
         "DEREGISTER"
     ]
+
     def __init__(self, config):
         self.client = None
         self.watchdog_timer = None
         self.restart_timer = None
 
         # Verify the configuration
-        url = config.get("lwm2m_url")
-        if url is None:
-            print("lwm2m_url not set in configuration")
-            return
+        self.url = config.get("lwm2m_url")
+        if self.url is None:
+            config.set("lwm2m_url", "coap://leshan.eclipseprojects.io:5683")
+        self.url = config.get("lwm2m_url")
 
         self.bootstrap = config.get("lwm2m_bootstrap")
         if self.bootstrap is None:
@@ -310,7 +360,8 @@ class LwM2MClient:
             psk_id = config.get("lwm2m_psk_id")
             psk = config.get("lwm2m_psk")
             if psk_id is None or psk is None:
-                raise Exception("lwm2m_psk_id or lwm2m_psk not set in configuration")
+                raise Exception(
+                    "lwm2m_psk_id or lwm2m_psk not set in configuration")
         elif security_mode != canvas_net.Lwm2m.SECURITY_NOSEC:
             raise Exception("Invalid lwm2m_security_mode in configuration")
 
@@ -320,12 +371,13 @@ class LwM2MClient:
             board_type = "bl5340"
         elif board_type == "pinnacle_100_dvk":
             board_type = "p100"
-        endpoint = board_type + "_" + binascii.hexlify(machine.unique_id()).decode()
+        self.endpoint = board_type + "_" + \
+            binascii.hexlify(machine.unique_id()).decode()
 
         # Configure the LwM2M client
         self.client = canvas_net.Lwm2m(self.event_cb)
-        self.client.set_endpoint_name(endpoint)
-        self.client.set((self.client.OBJ_SECURITY, 0, 0), url)
+        self.client.set_endpoint_name(self.endpoint)
+        self.client.set((self.client.OBJ_SECURITY, 0, 0), self.url)
         self.client.set((self.client.OBJ_SECURITY, 0, 1), self.bootstrap)
         self.client.set((self.client.OBJ_SECURITY, 0, 2), security_mode)
 
@@ -348,12 +400,13 @@ class LwM2MClient:
         self.client.set((self.client.OBJ_DEVICE, 0, 3), os.uname().release)
         self.client.create((self.client.OBJ_DEVICE, 0, 17), 32)
         self.client.set((self.client.OBJ_DEVICE, 0, 17), os.uname().machine)
-        self.client.set_exec_handler((self.client.OBJ_DEVICE, 0, 4), self.reboot_exec_cb)
+        self.client.set_exec_handler(
+            (self.client.OBJ_DEVICE, 0, 4), self.reboot_exec_cb)
 
     def restart_timer_cb(self, data):
         print("Restart LwM2M client")
         self.start()
-    
+
     def watchdog_timer_cb(self, data):
         # Stop the watchdog timer
         if self.watchdog_timer is not None:
@@ -374,10 +427,11 @@ class LwM2MClient:
         if evt == self.client.EV_RD_DISCONNECT or evt == self.client.EV_RD_NETWORK_ERROR:
             # Treat this the same as the watchdog expiration
             self.watchdog_timer_cb(None)
-        
+
         # On registration/registration update, reset the watchdog
         elif evt == self.client.EV_RD_REGISTRATION_COMPLETE or evt == self.client.EV_RD_REG_UPDATE_COMPLETE:
-            reg_update_time = self.client.get_int((self.client.OBJ_SERVER, 0, 1))
+            reg_update_time = self.client.get_int(
+                (self.client.OBJ_SERVER, 0, 1))
             if reg_update_time is None or reg_update_time < 60:
                 reg_update_time = 60
 
@@ -398,11 +452,14 @@ class LwM2MClient:
 
     def start(self):
         if self.client is not None:
+            print("LwM2M connecting to {} as {}".format(
+                self.url, self.endpoint))
             self.client.start(self.bootstrap != 0)
 
     def stop(self, dereg: bool):
         if self.client is not None:
             self.client.stop(dereg)
+
 
 class SntpClient:
     def __init__(self, config):
@@ -424,25 +481,27 @@ class SntpClient:
             self.sntp = sntp.Sntp(host=self.hostname)
 
         # Initial poll
-        self.poll(None)
+        self.poll()
 
-    def poll(self, data):
+    def poll(self):
         try:
             self.sntp.poll()
         except Exception as e:
             print("SNTP poll failed:", e)
         if self.timer is None:
-            self.timer = canvas.Timer(self.period * 1000, True, self.poll, None)
+            self.timer = canvas.Timer(
+                self.period * 1000, True, self.poll, None)
         self.timer.start()
+
 
 class Scanner:
     def __init__(self):
         canvas_ble.init()
         self.scanner = canvas_ble.Scanner(scan_cb)
         self.scanner.set_phys(canvas_ble.PHY_1M)
-        self.scanner.set_timing(100, 80)
-        self.scanner.filter_add(self.scanner.FILTER_MANUF_DATA,
-                                bytes([0x77, 0x00, 0xc9, 0x00]))
+        self.scanner.set_timing(1000, 300)
+        self.scanner.filter_add(
+            canvas_ble.Scanner.FILTER_UUID, self.uuidToBytes(TEXT_SERVICE_UUID))
 
     def start(self):
         print("Scanner starting")
@@ -451,14 +510,31 @@ class Scanner:
     def stop(self):
         self.scanner.stop()
 
+    def uuidToBytes(self, uuid):  # Convert the 128 bit UUID string to bytes
+        uuid_bytes = list(bytes.fromhex(uuid.replace("-", "")))
+        uuid_bytes.reverse()
+        return bytes(uuid_bytes)
+
+
 def stop():
     # Stop any asynchronous tasks
     if client is not None:
-        client.stop() 
+        client.stop()
     if scanner is not None:
         scanner.stop()
     if lwm2m_client is not None:
         lwm2m_client.stop(True)
+
+
+if "mg100" == os.uname().machine:
+    BLE_LED = Led('LED_BLUE', machine.Pin.OUT, 0)
+    CLOUD_LED = Led('LED_GREEN', machine.Pin.OUT, 0)
+elif "pinnacle_100_dvk" == os.uname().machine or "bl5340_dvk_cpuapp" == os.uname().machine:
+    BLE_LED = Led('LED2', machine.Pin.OUT, 0)
+    CLOUD_LED = Led('LED3', machine.Pin.OUT, 0)
+else:
+    raise Exception(
+        "Unknown LED config for board {}".format(os.uname().machine))
 
 # Load configuration
 config = config.Config()
@@ -497,3 +573,6 @@ lwm2m_client.start()
 # Instantiate the BLE scanner
 scanner = Scanner()
 scanner.start()
+
+publish_timer = canvas.Timer(PUBLISH_PERIOD, True, mqtt_publish_timer, None)
+publish_timer.start()

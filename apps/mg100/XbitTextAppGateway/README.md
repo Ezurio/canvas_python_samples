@@ -1,9 +1,10 @@
-# BLE-to-MQTT application
-This repository contains a Python application intended for use on Canvas
+# Xbit Text Service Gateway Demo Script
+This app is intended for use on Canvas
 products that support networking (MG100, Pinnacle 100, BL5340 DVK, etc.).
 This application provides a demonstration of the capability of these
 products to implement a gateway to relay BLE advertisement data to an
 MQTT broker.
+The app works with peripheral devices running the [XbitTextApp][1]
 
 This application also optionally connects to a LwM2M server for the
 purposes of device management.
@@ -25,7 +26,8 @@ the application.
 
 ## Intended Use
 Once the device has been configured correctly and connected to the network,
-it will start scanning for BLE advertisements from a Laird Connectivity BT510
-that is advertising sensor data. The sensor data, specifically temperature,
-is extracted from the advertisement and then periodically sent to the MQTT
+it will start scanning for BLE advertisements from a device running the [XbitTextApp][1]. The advertisement data 
+is extracted and then periodically sent to the MQTT
 broker (e.g., ThingsBoard or AWS IoT).
+
+[1]: ../../bl654_usb/XbitTextApp/XbitTextApp.py "XbitTextApp"
