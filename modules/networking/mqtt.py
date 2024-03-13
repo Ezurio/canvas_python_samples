@@ -1,5 +1,6 @@
 import socket
 import struct
+import select
 from binascii import hexlify
 
 
@@ -111,7 +112,10 @@ class MQTTClient:
         return resp[2] & 1
 
     def disconnect(self):
-        self.sock.write(b"\xe0\0")
+        try:
+            self.sock.write(b"\xe0\0")
+        except:
+            pass
         self.sock.close()
 
     def ping(self):
@@ -175,9 +179,14 @@ class MQTTClient:
     # Subscribed messages are delivered to a callback previously
     # set by .set_callback() method. Other (internal) MQTT
     # messages processed internally.
-    def wait_msg(self):
+    def wait_msg(self, timeout_ms: int = 5000):
+        self.sock.setblocking(False)
+        poller = select.poll()
+        poller.register(self.sock, select.POLLIN)
+        res = poller.poll(timeout_ms)
+        if not res:
+            raise Exception("Timeout receiving MQTT message")
         res = self.sock.read(1)
-        self.sock.setblocking(True)
         if res is None:
             return None
         if res == b"":
@@ -207,10 +216,3 @@ class MQTTClient:
         elif op & 6 == 4:
             assert 0
         return op
-
-    # Checks whether a pending message from server is available.
-    # If not, returns immediately with None. Otherwise, does
-    # the same processing as wait_msg.
-    def check_msg(self):
-        self.sock.setblocking(False)
-        return self.wait_msg()
