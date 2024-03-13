@@ -43,6 +43,8 @@ class NetHelper:
             else:
                 self.modem_ready = False
                 self.net_ready = False
+        elif e.event == self.modem.EVENT_APN_UPDATE:
+            self.modem_apn = e.string
 
         # Call callback if something changed
         if was_net_ready != self.net_ready:
@@ -87,6 +89,7 @@ class NetHelper:
         try:
             from canvas_net import Modem
             self.has_modem = True
+            self.modem_apn = None
             self.modem = Modem(self.modem_cb)
             if "mg100" == os.uname().machine:
                 self.net_led = Pin('LED_RED', Pin.OUT, 0)
@@ -126,3 +129,9 @@ class NetHelper:
 
     def is_ready(self):
         return self.net_ready
+
+    def set_modem_apn(self, apn: str):
+        while self.modem_apn is None:
+            time.sleep_ms(100)
+        if self.modem_apn != apn:
+            self.modem.set_apn(apn)
