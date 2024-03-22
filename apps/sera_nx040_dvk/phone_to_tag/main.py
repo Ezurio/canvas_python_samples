@@ -4,6 +4,8 @@ import canvas_uwb
 import binascii
 import machine
 import struct
+import os
+import time
 
 ##############################################################################
 # Local variables
@@ -28,12 +30,48 @@ gattserver = None
 # UWB objects
 session = None
 
+# LEDs
+LED_BLINK_TIME = 100 # milliseconds
+rgb_led = None
+leds = [ ]
+led_timer = None
+
 ##############################################################################
 # Functions
 ##############################################################################
+def update_range_leds(range):
+    if os.uname().machine == "sera_nx040_tag":
+        for x in range(5):
+            leds[x].off() 
+        if range == canvas_uwb.RANGE_ERROR:
+            leds[0].on()
+        else:
+            if range <= 200:
+                leds[1].on()
+            if range <= 100:
+                leds[2].on()
+            if range <= 50:
+                leds[3].on()
+            if range <= 10:
+                leds[4].on()
+    else:
+        if range == canvas_uwb.RANGE_ERROR:
+            rgb_led.set(0, 0x0f0000)
+        else:
+            rgb_led.set(0, 0x000f00)
+    led_timer.start()
+
+def led_timer_callback(d):
+    # Turn off all LEDs
+    if os.uname().machine == "sera_nx040_tag":
+        for x in range(5):
+            leds[x].off() 
+    else:
+        rgb_led.set(0, 0)
 
 def range_cb(ranges):
     for r in ranges:
+        update_range_leds(r.range)
         if r.range != canvas_uwb.RANGE_ERROR:
             print("Range:", r)
 
@@ -63,6 +101,7 @@ def ble_disconn_cb(c):
     # Stop any outstanding UWB session
     if session is not None:
         session.stop()
+        canvas_uwb.shutdown()
         session = None
     
     # Reset our security variables
@@ -235,6 +274,7 @@ def stop_ranging():
     # Stop the session if it is active
     if session is not None:
         session.stop()
+        canvas_uwb.shutdown()
         session = None
 
     # Send the response back to the phone
@@ -319,6 +359,14 @@ GATT_TABLE = {
         }
     }
 }
+
+# LED initialization
+if os.uname().machine == "sera_nx040_tag":
+    leds = [ machine.Pin("LED" + str(x+1), machine.Pin.OUT, 0) for x in range(5) ]
+else:
+    rgb_led = canvas.LEDStrip("", 1)
+led_timer = canvas.Timer(LED_BLINK_TIME, False, led_timer_callback, None)
+led_timer.start()
 
 # Initialize BLE and our GATT server
 canvas_ble.init()
