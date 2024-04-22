@@ -27,7 +27,7 @@ class NetHelper:
             if e.data[0] == self.modem.STATE_NETWORK_HOME_NETWORK or e.data[0] == self.modem.STATE_NETWORK_ROAMING:
                 self.net_led.on()
             else:
-                self.net_led.on()
+                self.net_led.off()
         elif e.event == self.modem.EVENT_RSSI:
             val = struct.unpack("<i", e.data)[0]
             print("RSSI: {}".format(val))
