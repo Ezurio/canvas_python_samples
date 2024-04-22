@@ -29,7 +29,7 @@ the application.
 ## Intended Use
 
 Once the device has been configured correctly and connected to the network,
-it will start scanning for BLE advertisements from a Laird Connectivity BT510
+it will start scanning for BLE advertisements from a Ezurio BT510
 that is advertising sensor data. The sensor data, specifically temperature,
 is extracted from the advertisement and then periodically sent to the MQTT
 broker (e.g., ThingsBoard or AWS IoT).

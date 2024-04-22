@@ -2,7 +2,7 @@
 NX040 AT Command Reference
 ##########################
 
-This document describes the AT commands supported by the Laird Sera NX040
+This document describes the AT commands supported by the Ezurio Sera NX040
 module. The NX040 module is a Bluetooth Low Energy (BLE) and Ultrawide Band
 (UWB) module. There are AT commands to control the BLE and UWB functionality
 of the module.

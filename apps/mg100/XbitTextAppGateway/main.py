@@ -395,7 +395,7 @@ class LwM2MClient:
 
         # Set up the device object
         self.client.create((self.client.OBJ_DEVICE, 0, 0), 32)
-        self.client.set((self.client.OBJ_DEVICE, 0, 0), "Laird Connectivity")
+        self.client.set((self.client.OBJ_DEVICE, 0, 0), "Ezurio")
         self.client.create((self.client.OBJ_DEVICE, 0, 3), 32)
         self.client.set((self.client.OBJ_DEVICE, 0, 3), os.uname().release)
         self.client.create((self.client.OBJ_DEVICE, 0, 17), 32)

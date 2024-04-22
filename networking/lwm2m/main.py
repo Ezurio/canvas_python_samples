@@ -11,14 +11,14 @@ import machine
 #
 # Fill out the following configuration parameters to match your environment.
 
-bootstrap = 0 # or 1
-security_mode = Lwm2m.SECURITY_NOSEC # or Lwm2m.SECURITY_PSK
+bootstrap = 0  # or 1
+security_mode = Lwm2m.SECURITY_NOSEC  # or Lwm2m.SECURITY_PSK
 psk_id = "my-psk-id"
 psk = "my-psk"
 server_url = "coap://leshan.eclipseprojects.io:5683"
 # Endpoint name is a unique identifier for the device.
 # Use the device's unique ID to generate a unique endpoint name.
-endpoint_name = "my-device_" +  binascii.hexlify(machine.unique_id()).decode()
+endpoint_name = "my-device_" + binascii.hexlify(machine.unique_id()).decode()
 
 #
 ##############################################################################
@@ -43,14 +43,17 @@ LWM2M_EVENTS = [
 
 lwm2m = None
 
+
 def reboot_exec_cb(e):
     lwm2m.stop(True)
     print("Rebooting in 2 seconds...")
     time.sleep(2)
     machine.reset()
 
+
 def event_cb(evt):
     print("LwM2M event: {}".format(LWM2M_EVENTS[evt]))
+
 
 # Configure the LWM2M client
 lwm2m = Lwm2m(event_cb)
@@ -71,7 +74,7 @@ if bootstrap == 0:
 
 # Configure the device object
 lwm2m.create((lwm2m.OBJ_DEVICE, 0, 0), 32)
-lwm2m.set((lwm2m.OBJ_DEVICE, 0, 0), "Laird Connectivity")
+lwm2m.set((lwm2m.OBJ_DEVICE, 0, 0), "Ezurio")
 lwm2m.create((lwm2m.OBJ_DEVICE, 0, 3), 32)
 lwm2m.set((lwm2m.OBJ_DEVICE, 0, 3), os.uname().release)
 lwm2m.create((lwm2m.OBJ_DEVICE, 0, 17), 32)

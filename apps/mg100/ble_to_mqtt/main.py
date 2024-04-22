@@ -1,3 +1,14 @@
+import sntp
+import config
+import mqtt
+import binascii
+import machine
+import canvas_net
+import canvas_ble
+import canvas
+from net_helper import NetHelper
+import os
+import time
 app_id = 'xbit_mg100_ble_to_mqtt'
 app_ver = '1.1.0'
 
@@ -70,17 +81,6 @@ app_ver = '1.1.0'
 # lwm2m_bootstrap is not set, then the application will register directly
 # with the LwM2M server.
 
-import time
-import os
-from net_helper import NetHelper
-import canvas
-import canvas_ble
-import canvas_net
-import machine
-import binascii
-import mqtt
-import config
-import sntp
 
 # Always send if delta is greater than this
 DELTA_TEMP = 1.0
@@ -92,7 +92,7 @@ PUBLISH_PERIOD = 60000
 PRINT_PERIOD = 10000
 
 # LwM2M retry period
-LWM2M_RETRY_PERIOD = 10000 # 10 seconds
+LWM2M_RETRY_PERIOD = 10000  # 10 seconds
 
 # BLE scanner
 scanner = None
@@ -107,6 +107,7 @@ client = None
 #      'last_publish': last time published (int, milliseconds)
 devices = {}
 
+
 def scan_cb(evt):
     publish = False
 
@@ -117,7 +118,7 @@ def scan_cb(evt):
 
     # Check if we've seen this device before
     if evt.addr not in devices:
-        devices[evt.addr] = { 'temp': 0.0, 'last_publish': 0 }
+        devices[evt.addr] = {'temp': 0.0, 'last_publish': 0}
 
     # Get the temperature from the manufacturer-specific data
     temp_bytes = m[len(m)-2:]
@@ -132,7 +133,8 @@ def scan_cb(evt):
 
     # Print if necessary
     if publish or (time.ticks_ms() - devices[evt.addr]['last_print']) >= PRINT_PERIOD:
-        print ("Device: {}, Temperature: {}".format(binascii.hexlify(evt.addr).decode(), temp))
+        print("Device: {}, Temperature: {}".format(
+            binascii.hexlify(evt.addr).decode(), temp))
         devices[evt.addr]['last_print'] = time.ticks_ms()
 
     # Publish if necessary
@@ -142,6 +144,7 @@ def scan_cb(evt):
         client.publish('{{"temperature": {}}}'.format(temp))
         devices[evt.addr]['last_publish'] = time.ticks_ms()
         devices[evt.addr]['temp'] = temp
+
 
 class MqttClient:
     def __init__(self, config):
@@ -158,11 +161,11 @@ class MqttClient:
         self.port = config.get("mqtt_port")
         if self.port is None:
             raise Exception("mqtt_port not set in configuration")
-        
+
         self.client_id = config.get("mqtt_client_id")
         if self.client_id is None:
             raise Exception("mqtt_client_id not set in configuration")
-        
+
         self.user = config.get("mqtt_user")
         if self.user is not None:
             self.password = config.get("mqtt_password")
@@ -173,14 +176,16 @@ class MqttClient:
         if self.client_cert_file is not None:
             self.client_key_file = config.get("mqtt_client_key_file")
             if self.client_key_file is None:
-                raise Exception("mqtt_client_key_file not set in configuration")
+                raise Exception(
+                    "mqtt_client_key_file not set in configuration")
 
             self.ca_cert_file = config.get("mqtt_ca_cert_file")
             if self.ca_cert_file is None:
                 raise Exception("mqtt_ca_cert_file not set in configuration")
 
         if self.client_cert_file is None and self.user is None:
-            raise Exception("Either mqtt_client_cert_file or mqtt_user must be set in configuration")
+            raise Exception(
+                "Either mqtt_client_cert_file or mqtt_user must be set in configuration")
 
         self.keepalive = config.get("mqtt_keepalive")
         if self.keepalive is None:
@@ -262,6 +267,7 @@ class MqttClient:
             print("Publish failed")
             self.stop()
 
+
 class LwM2MClient:
     EVENTS = [
         "NONE",
@@ -280,6 +286,7 @@ class LwM2MClient:
         "REG_UPDATE",
         "DEREGISTER"
     ]
+
     def __init__(self, config):
         self.client = None
         self.watchdog_timer = None
@@ -310,7 +317,8 @@ class LwM2MClient:
             psk_id = config.get("lwm2m_psk_id")
             psk = config.get("lwm2m_psk")
             if psk_id is None or psk is None:
-                raise Exception("lwm2m_psk_id or lwm2m_psk not set in configuration")
+                raise Exception(
+                    "lwm2m_psk_id or lwm2m_psk not set in configuration")
         elif security_mode != canvas_net.Lwm2m.SECURITY_NOSEC:
             raise Exception("Invalid lwm2m_security_mode in configuration")
 
@@ -320,7 +328,8 @@ class LwM2MClient:
             board_type = "bl5340"
         elif board_type == "pinnacle_100_dvk":
             board_type = "p100"
-        endpoint = board_type + "_" + binascii.hexlify(machine.unique_id()).decode()
+        endpoint = board_type + "_" + \
+            binascii.hexlify(machine.unique_id()).decode()
 
         # Configure the LwM2M client
         self.client = canvas_net.Lwm2m(self.event_cb)
@@ -343,17 +352,18 @@ class LwM2MClient:
 
         # Set up the device object
         self.client.create((self.client.OBJ_DEVICE, 0, 0), 32)
-        self.client.set((self.client.OBJ_DEVICE, 0, 0), "Laird Connectivity")
+        self.client.set((self.client.OBJ_DEVICE, 0, 0), "Ezurio")
         self.client.create((self.client.OBJ_DEVICE, 0, 3), 32)
         self.client.set((self.client.OBJ_DEVICE, 0, 3), os.uname().release)
         self.client.create((self.client.OBJ_DEVICE, 0, 17), 32)
         self.client.set((self.client.OBJ_DEVICE, 0, 17), os.uname().machine)
-        self.client.set_exec_handler((self.client.OBJ_DEVICE, 0, 4), self.reboot_exec_cb)
+        self.client.set_exec_handler(
+            (self.client.OBJ_DEVICE, 0, 4), self.reboot_exec_cb)
 
     def restart_timer_cb(self, data):
         print("Restart LwM2M client")
         self.start()
-    
+
     def watchdog_timer_cb(self, data):
         # Stop the watchdog timer
         if self.watchdog_timer is not None:
@@ -374,10 +384,11 @@ class LwM2MClient:
         if evt == self.client.EV_RD_DISCONNECT or evt == self.client.EV_RD_NETWORK_ERROR:
             # Treat this the same as the watchdog expiration
             self.watchdog_timer_cb(None)
-        
+
         # On registration/registration update, reset the watchdog
         elif evt == self.client.EV_RD_REGISTRATION_COMPLETE or evt == self.client.EV_RD_REG_UPDATE_COMPLETE:
-            reg_update_time = self.client.get_int((self.client.OBJ_SERVER, 0, 1))
+            reg_update_time = self.client.get_int(
+                (self.client.OBJ_SERVER, 0, 1))
             if reg_update_time is None or reg_update_time < 60:
                 reg_update_time = 60
 
@@ -403,6 +414,7 @@ class LwM2MClient:
     def stop(self, dereg: bool):
         if self.client is not None:
             self.client.stop(dereg)
+
 
 class SntpClient:
     def __init__(self, config):
@@ -432,8 +444,10 @@ class SntpClient:
         except Exception as e:
             print("SNTP poll failed:", e)
         if self.timer is None:
-            self.timer = canvas.Timer(self.period * 1000, True, self.poll, None)
+            self.timer = canvas.Timer(
+                self.period * 1000, True, self.poll, None)
         self.timer.start()
+
 
 class Scanner:
     def __init__(self):
@@ -451,14 +465,16 @@ class Scanner:
     def stop(self):
         self.scanner.stop()
 
+
 def stop():
     # Stop any asynchronous tasks
     if client is not None:
-        client.stop() 
+        client.stop()
     if scanner is not None:
         scanner.stop()
     if lwm2m_client is not None:
         lwm2m_client.stop(True)
+
 
 # Load configuration
 config = config.Config()
