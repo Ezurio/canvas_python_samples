@@ -94,7 +94,7 @@ class NetHelper:
             if "mg100" == os.uname().machine:
                 self.net_led = Pin('LED_RED', Pin.OUT, 0)
             elif "pinnacle_100_dvk" == os.uname().machine:
-                self.net_led = Pin('LED1', Pin.OUT, 0)
+                self.net_led = Pin('LED3', Pin.OUT, 0)
             self.net_led.off()
         except:
             # No modem, so it's ready

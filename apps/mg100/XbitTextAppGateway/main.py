@@ -530,8 +530,8 @@ if "mg100" == os.uname().machine:
     BLE_LED = Led('LED_BLUE', machine.Pin.OUT, 0)
     CLOUD_LED = Led('LED_GREEN', machine.Pin.OUT, 0)
 elif "pinnacle_100_dvk" == os.uname().machine or "bl5340_dvk_cpuapp" == os.uname().machine:
-    BLE_LED = Led('LED2', machine.Pin.OUT, 0)
-    CLOUD_LED = Led('LED3', machine.Pin.OUT, 0)
+    BLE_LED = Led('LED1', machine.Pin.OUT, 0)
+    CLOUD_LED = Led('LED2', machine.Pin.OUT, 0)
 else:
     raise Exception(
         "Unknown LED config for board {}".format(os.uname().machine))
