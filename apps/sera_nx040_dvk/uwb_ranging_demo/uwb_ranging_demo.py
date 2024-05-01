@@ -1,5 +1,5 @@
 app_id='xbit_sera_ranging_demo'
-app_ver='0.1.0'
+app_ver='0.2.0'
 
 import canvas
 import canvas_ble
@@ -7,6 +7,11 @@ import canvas_uwb
 import time
 import machine
 import binascii
+import os
+
+# Numbers of LEDs
+TAG_NUM_LEDS = 5
+DVK_NUM_LEDS = 12
 
 # Advertising interval
 ADVERTISING_INTERVAL_MIN = 100 # milliseconds
@@ -17,14 +22,10 @@ RANGING_INTERVAL_UNICAST = 500 # milliseconds
 RANGING_INTERVAL_MULTICAST = 200 # milliseconds
 
 # How long to wait for a ranging result before giving up
-UNICAST_RANGING_TIMEOUT = 20 # ranging intervals
-MULTICAST_RANGING_TIMEOUT = 100 # ranging intervals
+DEVICE_RANGE_TIMEOUT = 10000 # milliseconds, 10 seconds
 
 # Tag detection timeout
 TAG_DETECT_TIMEOUT = 10000 # milliseconds
-
-# How long to enable LEDs in unicast mode before tags present
-UNICAST_LED_TIMEOUT = 30000 # milliseconds
 
 # Flags to track if tags are present in the network
 tags_present = False
@@ -37,8 +38,7 @@ unicast_start_time = 0
 #     session_id: session ID
 #     short_addr: short address
 #     range: range result
-#     count: ranging timeout counter
-#     timeout: ranging timeout
+#     timer: ranging timeout timer
 devices = {}
 
 # Sessions dictionary format:
@@ -56,7 +56,8 @@ MODE_MULTICAST=b'\x01'
 # Globals for BLE objects
 advertiser = None
 scanner = None
-main_led_strip = None
+led_strip = None
+leds = None
 
 # Global manufacturing-specific advertisement data array
 manu_data_hdr = [ ]
@@ -65,13 +66,27 @@ manu_data_hdr = [ ]
 config = { }
 
 def set_leds(color):
-    main_led_strip.set(0, color)
-    # LED strip has "GRB" color order rather than "RGB"
-    c = (color & 0xFF0000) >> 8
-    c |= (color & 0x00FF00) << 8
-    c |= (color & 0xFF)
-    for i in range(1,11):
-        main_led_strip.set(i, c)
+    if os.uname().machine == "sera_nx040_tag":
+        # Start by turning all LEDs off
+        for x in range(TAG_NUM_LEDS):
+            leds[x].off() 
+        # Turn on LEDs based on color
+        if (color & 0xFF0000) != 0:
+            # Red color, red LED
+            leds[0].on()
+        if (color & 0x00FFFF) != 0:
+            # Other colors, green LED
+            leds[1].on()
+    else:
+        # Set on-board LED
+        led_strip.set(0, color)
+
+        # Attached LED strip has "GRB" color order rather than "RGB"
+        c = (color & 0xFF0000) >> 8
+        c |= (color & 0x00FF00) << 8
+        c |= (color & 0xFF)
+        for i in range(1,DVK_NUM_LEDS - 1):
+            led_strip.set(i, c)
 
 # Function to update the advertising data
 def ad_update(restart:bool):
@@ -159,13 +174,9 @@ def range_cb(ranges):
     # Update the LED
     color = config['range_led']
     for r in ranges:
-        if r.range == 65535:
+        if r.range == canvas_uwb.RANGE_ERROR:
             color = config['error_led']
             break
-    # Turn off LED if we haven't seen any tags in a while
-    if tags_present == False:
-        if (time.ticks_ms() - unicast_start_time) > UNICAST_LED_TIMEOUT:
-            color = 0
     set_leds(color)
 
     for r in ranges:
@@ -178,29 +189,15 @@ def range_cb(ranges):
 
         # If found a matching device, update its range
         if dev_id_str is not None:
-            obj = devices[dev_id_str]
-            obj['range'] = r.range
-            if r.range == 65535:
-                # Increment count of missed ranges
-                count = obj['count']
-                count += 1
-                obj['count'] = count
-
-                # If we miss too many ranges, stop the session
-                if count > obj['timeout']:
-                    print("Ranging timeout for", dev_id_str, "in session", obj['session_id'])
-                    device_remove(dev_id_str)
-            else:
-                obj['count'] = 0
+            devices[dev_id_str]['range'] = r.range
+            if r.range != canvas_uwb.RANGE_ERROR:
+                devices[dev_id_str]['timer'].restart()
 
     # Update the advertisement data
     ad_update(False)
 
-    # Turn off LED if we haven't seen any tags in a while
+    # Set the LED back to the base color
     color = config['base_led']
-    if tags_present == False:
-        if (time.ticks_ms() - unicast_start_time) > UNICAST_LED_TIMEOUT:
-            color = 0
     set_leds(color)
 
 def session_start(dev_id, dev_id_str):
@@ -257,9 +254,8 @@ def session_start(dev_id, dev_id_str):
                 d = {}
                 d['session_id'] = session_id
                 d['short_addr'] = peer_addr
-                d['range'] = 65535
-                d['count'] = 0
-                d['timeout'] = MULTICAST_RANGING_TIMEOUT
+                d['range'] = canvas_uwb.RANGE_ERROR
+                d['timer'] = canvas.Timer(DEVICE_RANGE_TIMEOUT, False, device_remove, dev_id_str)
                 devices[dev_id_str] = d
 
         # Session already exists, don't need to create
@@ -273,10 +269,14 @@ def session_start(dev_id, dev_id_str):
         # Disable the current limiter, assume we're on a big battery
         result = canvas_uwb.raw_uci_send(bytes([0x2e, 0x2f, 0x00, 0x01, 0x01]))
 
-    if mode == MODE_MULTICAST:
-        print("Start multicast session", session_id_str)
+    if role == canvas_uwb.ROLE_INITIATOR:
+        role_str = "initiator"
     else:
-        print("Start unicast session", session_id_str, "with", dev_id_str)
+        role_str = "responder"
+    if mode == MODE_MULTICAST:
+        print("Start multicast session", session_id_str, "as", role_str)
+    else:
+        print("Start unicast session", session_id_str, "with", dev_id_str, "as", role_str)
 
     # Create the session
     session = canvas_uwb.session_new(session_id, role)
@@ -310,12 +310,8 @@ def session_start(dev_id, dev_id_str):
     d = {}
     d['session_id'] = session_id
     d['short_addr'] = peer_addr
-    d['range'] = 65535
-    d['count'] = 0
-    if mode == MODE_UNICAST:
-        d['timeout'] = UNICAST_RANGING_TIMEOUT
-    else:
-        d['timeout'] = MULTICAST_RANGING_TIMEOUT
+    d['range'] = canvas_uwb.RANGE_ERROR
+    d['timer'] = canvas.Timer(DEVICE_RANGE_TIMEOUT, False, device_remove, dev_id_str)
     devices[dev_id_str] = d
 
 def session_stop(session_id):
@@ -342,6 +338,7 @@ def session_stop(session_id):
         if devices[d]['session_id'] == session_id:
             to_remove.append(d)
     for d in to_remove:
+        devices[d]['timer'].stop()
         del devices[d]
 
 def session_stop_mode(mode):
@@ -356,11 +353,14 @@ def device_remove(dev_id_str):
     global devices
     global sessions
 
+    print("Device timeout", dev_id_str)
+
     # Find the device
     if dev_id_str in devices:
         obj = devices[dev_id_str]
         session_id = obj['session_id']
         short_addr = obj['short_addr']
+        obj['timer'].stop()
         obj = None
         del devices[dev_id_str]
 
@@ -369,8 +369,12 @@ def device_remove(dev_id_str):
             obj = sessions[str(session_id)]
             if short_addr in obj['devices']:
                 obj['devices'].remove(short_addr)
-                if obj['mode'] == MODE_MULTICAST:
-                    obj['session'].del_multicast(short_addr)
+                if len(obj['devices']) > 0 and obj['mode'] == MODE_MULTICAST:
+                    try:
+                        obj['session'].del_multicast(short_addr)
+                    except Exception as e:
+                        print("Failed to delete multicast device", short_addr, "from session", session_id)
+                        print(e)
             length = len(obj['devices'])
             obj = None
             if length == 0:
@@ -532,8 +536,11 @@ def disconnection_cb(conn):
     # restart advertising
     ad_update(True)
 
-# Initialize the LED
-main_led_strip = canvas.LEDStrip("", 12)
+# LED initialization
+if os.uname().machine == "sera_nx040_tag":
+    leds = [ machine.Pin("LED" + str(x+1), machine.Pin.OUT, 0) for x in range(TAG_NUM_LEDS) ]
+else:
+    led_strip = canvas.LEDStrip("", DVK_NUM_LEDS)
 set_leds(0)
 
 config_load()
