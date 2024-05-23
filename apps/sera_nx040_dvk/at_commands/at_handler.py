@@ -50,7 +50,7 @@ class ATHandler:
     def __uwb_range_cb_factory(self, session_id):
         def __uwb_range_cb(ranges):
             for r in ranges:
-                sys.stdout.write("RANGE:" + str(session_id) + " " +
+                self.reader.write("RANGE:" + str(session_id) + " " +
                                  str(r.addr) + " " + str(r.range) + "\r\n")
         return __uwb_range_cb
 
@@ -65,22 +65,22 @@ class ATHandler:
         i = int(cmd.parameter[0])
 
         if i == 0:
-            sys.stdout.write(os.uname().machine)
+            self.reader.write(os.uname().machine)
         elif i == 3:
-            sys.stdout.write(os.uname().release)
+            self.reader.write(os.uname().release)
         elif i == 5:
-            sys.stdout.write(binascii.hexlify(machine.unique_id()).decode())
+            self.reader.write(binascii.hexlify(machine.unique_id()).decode())
         elif i == 4:
-            sys.stdout.write(canvas_ble.addr_to_str(canvas_ble.my_addr()))
+            self.reader.write(canvas_ble.addr_to_str(canvas_ble.my_addr()))
         elif i == 2001:
-            sys.stdout.write(str(machine.reset_cause()))
+            self.reader.write(str(machine.reset_cause()))
         elif i == 2002:
-            sys.stdout.write(str(gc.mem_free()))
+            self.reader.write(str(gc.mem_free()))
         elif i == 2003:
-            sys.stdout.write(str(gc.mem_alloc()))
+            self.reader.write(str(gc.mem_alloc()))
         else:
             raise ValueError("Invalid device info ID")
-        sys.stdout.write("\r\n")
+        self.reader.write("\r\n")
 
     def __handle_atz(self, cmd: ATString):
         machine.reset()
