@@ -88,7 +88,6 @@ class NetHelper:
         # Initialize modem, if present
         try:
             from canvas_net import Modem
-            self.has_modem = True
             self.modem_apn = None
             self.modem = Modem(self.modem_cb)
             if "mg100" == os.uname().machine:
@@ -98,7 +97,6 @@ class NetHelper:
             self.net_led.off()
         except:
             # No modem, so it's ready
-            self.has_modem = False
             self.modem = None
             self.modem_ready = True
 
@@ -131,6 +129,8 @@ class NetHelper:
         return self.net_ready
 
     def set_modem_apn(self, apn: str):
+        if self.modem is None:
+            return
         while self.modem_apn is None:
             time.sleep_ms(100)
         if self.modem_apn != apn:
