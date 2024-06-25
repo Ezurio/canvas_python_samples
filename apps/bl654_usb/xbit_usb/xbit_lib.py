@@ -185,6 +185,21 @@ def bleNotifyDisable(char_name):
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
 
+# send a read request over BLE to the requested characteristic ID for the specified connection handle
+def bleRead(char_name):
+    global gatt_client
+    global rpc_id
+    if gatt_client != None:
+        try:
+            data = gatt_client.read(char_name)
+            print("{'i':" + str(rpc_id) + ",'b':'" + data.hex() + "'}")
+        except:
+            print("{'i':" + str(rpc_id) + ", 'e':'RERROR'}")
+            return
+    else:
+        print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
+        return
+
 # send a write of 'data' over BLE to the requested characteristic ID for the specified connection handle
 def bleWrite(char_name, data):
     global gatt_client

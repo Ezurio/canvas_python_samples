@@ -1,5 +1,5 @@
 app_id='xbit_usb'
-app_ver='0.1.0'
+app_ver='0.1.1'
 
 import sys
 import xbit_lib
@@ -46,6 +46,10 @@ import xbit_lib
 # def bleNotifyDisable(char_name)
 # example of calling 'bleNotifyDisable("smp")'
 # {'x':'bleNotifyDisable("smp")','i':10}
+
+# def bleRead(char_name)
+# example of calling 'bleRead("temperature")'
+# {'x':'bleRead("temperature")','i':11}
 
 # def bleWrite(char_name, data)
 # example of calling 'bleWrite()':
