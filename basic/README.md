@@ -7,7 +7,10 @@ Some very simple python examples
 
 ## Description
 ### hello_world.py
-- Prints 'hello world' followed by an incrementing count 1000 times.
+- Prints 'Hello, world!' followed by an incrementing counter.
+
+### reload.py
+- Defines a simple function that can be used to reload a module without resetting the device or restarting the interpreter.
 
 ### simple_escalating_sleep.py
 - Uses the sleep_ms function to sleep for incrementing periods of time with a print of the time period between.
