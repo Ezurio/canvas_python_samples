@@ -10,16 +10,25 @@ SUPPORT_TIMEOUT = hasattr(socket.socket, 'settimeout')
 
 
 class Response():
-    def __init__(self, status_code, raw):
+    def __init__(self, status_code, raw, headers=None, msg=""):
         self.status_code = status_code
         self.raw = raw
         self._content = None
+        self.headers = headers
+        self.message = msg
 
     def content(self):
         if self._content is None:
-            self._content = self.raw.read()
-            self.raw.close()
-            self.raw = None
+            try:
+                l = self.raw.read(1)
+                self._content = l
+                while len(l) > 0:
+                    l = self.raw.read(1)
+                    self._content += l
+                self.raw.close()
+                self.raw = None
+            except:
+                pass
         return self._content
 
     def close(self):
@@ -36,11 +45,12 @@ class Response():
 
 
 # Adapted from upip
-def request(method, url, content=None, content_type=None, timeout=None, headers=None):
+def request(method, url, content=None, content_type=None, timeout=None, headers=None, ssl_params=None):
     urlparts = url.split('/', 3)
     proto = urlparts[0]
     host = urlparts[2]
     urlpath = '' if len(urlparts) < 4 else urlparts[3]
+    resp = None
 
     if proto == 'http:':
         port = 80
@@ -58,38 +68,51 @@ def request(method, url, content=None, content_type=None, timeout=None, headers=
 
     sock = socket.socket()
 
-    if timeout is not None:
-        assert SUPPORT_TIMEOUT, 'Socket does not support timeout'
-        sock.settimeout(timeout)
+    try:
+        if timeout is not None:
+            assert SUPPORT_TIMEOUT, 'Socket does not support timeout'
+            sock.settimeout(timeout)
 
-    sock.connect(addr)
+        # print('Connecting to', addr)
+        sock.connect(addr)
 
-    if proto == 'https:':
-        assert SUPPORT_SSL, 'HTTPS not supported: could not find ssl'
-        sock = ssl.wrap_socket(sock)
+        if proto == 'https:':
+            assert SUPPORT_SSL, 'HTTPS not supported: could not find ssl'
+            # print('Wrapping in SSL')
+            sock = ssl.wrap_socket(sock, **ssl_params)
 
-    sock.write('%s /%s HTTP/1.0\r\nHost: %s\r\n' % (method, urlpath, host))
+        # print('Connected, sending request')
+        sock.write('%s /%s HTTP/1.1\r\nHost: %s\r\n' % (method, urlpath, host))
 
-    if headers is not None:
-        for header in headers.items():
-            sock.write('%s: %s\r\n' % header)
+        if headers is not None:
+            for header in headers.items():
+                sock.write('%s: %s\r\n' % header)
 
-    if content is not None:
-        sock.write('content-length: %s\r\n' % len(content))
-        sock.write('content-type: %s\r\n' % content_type)
-        sock.write('\r\n')
-        sock.write(content)
-    else:
-        sock.write('\r\n')
+        if content is not None:
+            sock.write('content-length: %s\r\n' % len(content))
+            sock.write('content-type: %s\r\n' % content_type)
+            sock.write('\r\n')
+            sock.write(content)
+        else:
+            sock.write('\r\n')
 
-    l = sock.readline()
-    protover, status, msg = l.split(None, 2)
+        # print('reading response')
+        l = sock.readline()
+        protover, status, msg = l.split(None, 2)
 
-    # Skip headers
-    while sock.readline() != b'\r\n':
-        pass
+        # Read headers
+        line = sock.readline()
+        headers = line
+        while line != b'\r\n':
+            line = sock.readline()
+            headers += line
 
-    return Response(int(status), sock)
+        resp = Response(int(status), sock, headers, msg)
+    except Exception as e:
+        sock.close()
+        raise e
+
+    return resp
 
 
 def get(url, **kwargs):
