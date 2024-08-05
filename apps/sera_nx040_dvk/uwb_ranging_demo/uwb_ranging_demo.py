@@ -546,16 +546,26 @@ set_leds(0)
 config_load()
 
 print("My device ID is", binascii.hexlify(machine.unique_id()).decode())
-unicast_start_time = time.ticks_ms()
 
-# Initialize and start advertising
-canvas_ble.init()
-canvas_ble.set_periph_callbacks(connection_cb, disconnection_cb)
-ad_init()
-ad_update(True)
+def start_demo():
+    global unicast_start_time
+    unicast_start_time = time.ticks_ms()
 
-# Initialize and start scanning
-scan_init()
-scan_start()
+    # Initialize and start advertising
+    canvas_ble.init()
+    canvas_ble.set_periph_callbacks(connection_cb, disconnection_cb)
+    ad_init()
+    ad_update(True)
 
-set_leds(config['base_led'])
+    # Initialize and start scanning
+    scan_init()
+    scan_start()
+
+    set_leds(config['base_led'])
+
+# If the test rack didn't run this script, then start the demo.
+# Callbacks do not occur when running in Raw REPL mode.
+if 'robot_test_rack' not in globals():
+    start_demo()
+else:
+    print("Script Completed Successfully")
