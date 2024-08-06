@@ -446,9 +446,9 @@ def scan_init():
     global scanner
     scanner = canvas_ble.Scanner(scan_cb)
 
-    # Scan 80 out of 100 milliseconds
+    # Scan 160 out of 190 milliseconds
     scanner.set_phys(canvas_ble.PHY_1M)
-    scanner.set_timing(100, 80)
+    scanner.set_timing(190, 160)
 
     # Filter ads for just our manufacturer ID and protocol ID
     scanner.filter_add(3, bytes([0x77, 0x00, 0x0c, 0x00]))
