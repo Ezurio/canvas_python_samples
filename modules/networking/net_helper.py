@@ -89,12 +89,12 @@ class NetHelper:
         try:
             from canvas_net import Modem
             self.modem_apn = None
-            self.modem = Modem(self.modem_cb)
             if "mg100" == os.uname().machine:
                 self.net_led = Pin('LED_RED', Pin.OUT, 0)
             elif "pinnacle_100_dvk" == os.uname().machine:
                 self.net_led = Pin('LED3', Pin.OUT, 0)
             self.net_led.off()
+            self.modem = Modem(self.modem_cb)
         except:
             # No modem, so it's ready
             self.modem = None
