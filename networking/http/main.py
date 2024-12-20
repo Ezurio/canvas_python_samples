@@ -114,5 +114,5 @@ def http_post():
 
 net = NetHelper(None)
 print("Connecting to network...")
-net.wait_for_network()
+net.wait_for_ready()
 print("Connected to network")
