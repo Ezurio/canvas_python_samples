@@ -1,24 +1,27 @@
 import canvas_ble as ble
+from canvas_ble import UUID
 import time
 
 print("")
 print("Gatt Server Indication Example")
 print("")
 
-#--------------------------------------
+# --------------------------------------
 # Callbacks
-#--------------------------------------
+# --------------------------------------
 def cb_con(conn):
     global connection
     connection = conn
     print("Connected: ", connection)
     print("-----------------")
 
+
 def cb_discon(conn):
     global discon
     print("Disconnected: ", connection)
     print("-----------------")
     discon = True
+
 
 def cb_indicate(event_object):
     global do_indicate
@@ -46,33 +49,29 @@ def cb_indicate(event_object):
         print("----------------")
         event_object.connection.disconnect()
 
-#--------------------------------------
+
+# --------------------------------------
 # Variables
-#--------------------------------------
+# --------------------------------------
 connection = None
 discon = False
 do_indicate = False
 loop = 0
 
 gatt_table = {
-    "Service 1":{
-        "Name": "S1",
-        "UUID":"b8d02d81-6329-ef96-8a4d-55b376d8b25a",
-        "Characteristic 1":{
-            "Name": "S1:C1",
-            "UUID" :"b8d00002-6329-ef96-8a4d-55b376d8b25a",
-            "Length" : 20,
-            "Read Encryption" : "None",
-            "Write Encryption" : "None",
-            "Capability" : "Indicate",
-            "Callback" : cb_indicate
+    UUID("b8d02d81-6329-ef96-8a4d-55b376d8b25a"): {
+        UUID("b8d00004-6329-ef96-8a4d-55b376d8b25a"): {
+            "name": "S1:C1",
+            "length": 20,
+            "flags": ble.GattServer.FLAG_INDICATE,
+            "callback": cb_indicate
         }
     }
 }
 
-#--------------------------------------
+# --------------------------------------
 # Application script
-#--------------------------------------
+# --------------------------------------
 # Start an advert
 ble.init()
 advert = ble.Advertiser()
@@ -102,11 +101,11 @@ while discon == False:
     time.sleep_ms(1000)
     if connection != None and do_indicate:
         loop = loop + 1
-        string = "Count: %d" %(loop)
-        value = bytes(string,'utf-8')
+        string = "Count: %d" % (loop)
+        value = bytes(string, 'utf-8')
         try:
             my_gattserver.indicate(connection, "S1:C1", value)
         except:
             print("Indicate failed")
 
-del(connection)
+del (connection)

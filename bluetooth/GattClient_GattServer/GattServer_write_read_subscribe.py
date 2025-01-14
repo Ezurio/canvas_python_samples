@@ -1,4 +1,5 @@
 import canvas_ble as ble
+from canvas_ble import UUID
 import time
 
 
@@ -29,37 +30,26 @@ def cb_con(conn):
 
 
 def cb_disconnected(conn):
-    global disconnected
+    global advert, disconnected
     print("Disconnected: ", conn)
     disconnected = True
-    # Should be defined by application script
-    global adv
-    if adv is not None:
-        adv.start()
+    if advert is not None:
+        advert.start()
 
 
 gatt_table = {
-    "Service 1": {
-        "Name": "S1",
-        "UUID": "b8d02d81-6329-ef96-8a4d-55b376d8b25a",
-        "Characteristic 1": {
-            "Name": "S1:C1",
-            "UUID": "b8d00001-6329-ef96-8a4d-55b376d8b25a",
-            "Length": 20,
-            "Read Encryption": "None",
-            "Write Encryption": "None",
-            "Capability": "Write",
-            "Callback": s1c1_cb
+    UUID("b8d02d81-6329-ef96-8a4d-55b376d8b25a"): {
+        UUID("b8d00001-6329-ef96-8a4d-55b376d8b25a"): {
+            "name": "S1:C1",
+            "length": 20,
+            "flags": ble.GattServer.FLAG_WRITE_ACK,
+            "callback": s1c1_cb
         },
-        "Characteristic 2": {
-            "Name": "S1:C2",
-            "UUID": "b8d00004-6329-ef96-8a4d-55b376d8b25a",
-            "Length": 20,
-            "Read Encryption": "None",
-            "Write Encryption": "None",
-            "Capability": ["Read", "Notify", "Indicate"],
-            "Callback": generic_cb
-
+        UUID("b8d00004-6329-ef96-8a4d-55b376d8b25a"): {
+            "name": "S1:C2",
+            "length": 20,
+            "flags": ble.GattServer.FLAG_READ | ble.GattServer.FLAG_NOTIFY | ble.GattServer.FLAG_INDICATE,
+            "callback": generic_cb
         }
     }
 }
@@ -70,12 +60,26 @@ ble.set_periph_callbacks(cb_con, cb_disconnected)
 my_gattserver = ble.GattServer()
 my_gattserver.build_from_dict(gatt_table)
 
+# Configure advertisements
+ble.init()
+advert = ble.Advertiser()
+advert.stop()
+advert.clear_buffer(True)
+advert.add_canvas_data(0, 0, True)
+advert.clear_buffer(False)
+advert.add_ltv(ble.AD_TYPE_FLAGS, bytes([6]), False)
+advert.add_tag_string(ble.AD_TYPE_NAME_COMPLETE,
+                      "Canvas Read/Write/Sub", False)
+advert.set_properties(True, True, False)
+advert.set_interval(200, 250)
+
 
 def main_loop():
     print("")
-    print("Gatt Server Read / Write example")
+    print("Gatt Server Read / Write / Subscribe example")
     print("BLE address: ", ble.addr_to_str(ble.my_addr()))
     my_gattserver.start()
+    advert.start()
     loop = 0
     while True:
         time.sleep_ms(1000)

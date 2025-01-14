@@ -1,12 +1,12 @@
 import canvas_ble
+from canvas_ble import UUID
 import time
 
 scanner = None
 connection = None
 gatt_client = None
 
-# In this setup, if the remote devices makes the connection, 
-# the connection handle will not be valid.
+
 def ble_connected(conn):
     global connection
     connection = conn
@@ -23,7 +23,6 @@ def ble_disconnected(conn):
     time.sleep_ms(5000)
     print("Restarting scan")
     scanner.start(1)
-        
 
 
 def scan_result(result):
@@ -44,14 +43,11 @@ def start_scanning():
     scanner.start(1)
 
 
-def cb_notify(event):
-    print("Notify from UUID: ", event.uuid, " Name: ",
+def cb_notify_ind(event):
+    type = "Notify" if event.notify else "Indicate"
+    print(type + " from UUID: ", event.uuid, " Name: ",
           event.name, " Data: ", event.data.hex())
 
-
-def cb_indicate(event):
-    print("Indicate from UUID: ", event.uuid, " Name: ",
-          event.name, " Data: ", event.data.hex())
 
 start_scanning()
 
@@ -60,13 +56,17 @@ while connection == None:
     time.sleep_ms(1000)
 
 gatt_client = canvas_ble.GattClient(connection)
-gatt_client.set_callbacks(cb_notify, cb_indicate)
+gatt_client.set_callback(cb_notify_ind)
 gatt_client.discover()
 
 # Subscribe to TX power characteristic using a name
-gatt_client.set_name("2a07", "tx_power")
-gatt_client.configure_subscription("tx_power", canvas_ble.GattClient.CCCD_STATE_NOTIFY)
+gatt_client.set_name(UUID(0x2a07), "tx_power")
+# Subscribe to notifications
+gatt_client.subscribe("tx_power", True, False)
 # Other options
-#gatt_client.configure_subscription("tx_power", canvas_ble.GattClient.CCCD_STATE_INDICATE)
-#gatt_client.configure_subscription("tx_power", canvas_ble.GattClient.CCCD_STATE_BOTH)
-#gatt_client.configure_subscription("tx_power", canvas_ble.GattClient.CCCD_STATE_DISABLE)
+# Subscribe to indications
+# gatt_client.subscribe("tx_power", False, True)
+# Subscribe to both notifications and indications
+# gatt_client.subscribe("tx_power", True, True)
+# Unsubscribe from notifications and indications
+# gatt_client.subscribe("tx_power", False, False)

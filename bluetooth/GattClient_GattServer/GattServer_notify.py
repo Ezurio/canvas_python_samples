@@ -1,21 +1,22 @@
 import canvas_ble as ble
+from canvas_ble import UUID
 import time
 
 print("")
 print("Gatt Server Notify Example")
 print("")
 
-#--------------------------------------
+# --------------------------------------
 # Variables
-#--------------------------------------
+# --------------------------------------
 connection = None
 discon = False
 do_notify = False
 count = 0
 
-#--------------------------------------
+# --------------------------------------
 # Callbacks
-#--------------------------------------
+# --------------------------------------
 def cb_notify_enabled(event_object):
     global do_notify
     if event_object.type == ble.GattServer.EVENT_CCCD_NONE:
@@ -36,11 +37,13 @@ def cb_notify_enabled(event_object):
         print(event_object.name, " notify and indicate enabled - THIS IS BAD")
         print("----------------")
 
+
 def cb_con(conn):
     global connection
     connection = conn
     print("Connected: ", connection)
     print("-----------------")
+
 
 def cb_discon(conn):
     global discon
@@ -49,27 +52,21 @@ def cb_discon(conn):
     discon = True
 
 
-
 # GATT table definition
 gatt_table = {
-    "Service 1":{
-        "Name": "S1",
-        "UUID":"b8d02d81-6329-ef96-8a4d-55b376d8b25a",
-        "Characteristic 1":{
-            "Name": "S1:C1",
-            "UUID" :"b8d00002-6329-ef96-8a4d-55b376d8b25a",
-            "Length" : 20,
-            "Read Encryption" : "None",
-            "Write Encryption" : "None",
-            "Capability" : "Notify",
-            "Callback" : cb_notify_enabled
+    UUID("b8d02d81-6329-ef96-8a4d-55b376d8b25a"): {
+        UUID("b8d00004-6329-ef96-8a4d-55b376d8b25a"): {
+            "name": "S1:C1",
+            "length": 20,
+            "flags": ble.GattServer.FLAG_NOTIFY,
+            "callback": cb_notify_enabled
         }
     }
 }
 
-#--------------------------------------
+# --------------------------------------
 # Application script
-#--------------------------------------
+# --------------------------------------
 # Start an advert
 ble.init()
 advert = ble.Advertiser()
@@ -103,9 +100,9 @@ while discon == False:
         # Update the counter
         count = count + 1
         # Create a message
-        string = "Count: %d" %(count)
+        string = "Count: %d" % (count)
         print(string)
-        value = bytes(string,'utf-8')
+        value = bytes(string, 'utf-8')
         # Notify the connected client
         try:
             my_gattserver.notify(connection, "S1:C1", value)
@@ -113,4 +110,4 @@ while discon == False:
             print("Notify error")
 
 # Delete the connection once it's disconnected.
-del(connection)
+del (connection)

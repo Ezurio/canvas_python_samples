@@ -1,15 +1,8 @@
 import canvas_ble as ble
+from canvas_ble import UUID
 import time
 
 SIZE_IN_BYTES = 4
-
-def dual_cb(event):
-    if event.type == ble.GattServer.EVENT_ATTR_VALUE:
-        print("Event", event.type)
-        print("Name: ", event.name)
-        print("Data: ", event.data.decode())
-        print("Data Hex: ", event.data.hex())
-        print("Connection", event.connection)
 
 
 def generic_cb(event):
@@ -41,19 +34,15 @@ def cb_disconnected(conn):
     except:
         pass
 
+
 # Create a characteristic that is readable and writable
 gatt_table = {
-    "Farm Truck Service": {
-        "Name": "dually",
-        "UUID": "d90d8245-8885-4b4b-9a6e-988de00922a8",
-        "Characteristic 1": {
-            "Name": "decrement",
-            "UUID": "d90d8245-8886-4b4b-9a6e-988de00922a8",
-            "Length": SIZE_IN_BYTES,
-            "Read Encryption": "None",
-            "Write Encryption": "None",
-            "Capability": ["Read", "Write"],
-            "Callback": dual_cb
+    UUID("d90d8245-8885-4b4b-9a6e-988de00922a8"): {
+        UUID("d90d8245-8886-4b4b-9a6e-988de00922a8"): {
+            "name": "decrement",
+            "length": SIZE_IN_BYTES,
+            "flags": ble.GattServer.FLAG_WRITE_ACK | ble.GattServer.FLAG_READ,
+            "callback": generic_cb
         },
     }
 }
@@ -76,9 +65,10 @@ adv.add_tag_string(ble.AD_TYPE_NAME_COMPLETE, "Canvas", False)
 adv.set_properties(True, True, False)
 adv.set_interval(200, 250)
 
+
 def main_loop():
     print("")
-    print("Gatt Server Read and Write example")
+    print("Gatt Server decrement example")
     print("BLE address: ", ble.addr_to_str(ble.my_addr()))
     my_gattserver.start()
     adv.start()
@@ -91,6 +81,8 @@ def main_loop():
             if value != 0:
                 value -= 1
                 print(value)
-                my_gattserver.write("decrement", value.to_bytes(SIZE_IN_BYTES, 'little'))
+                my_gattserver.write(
+                    "decrement", value.to_bytes(SIZE_IN_BYTES, 'little'))
+
 
 main_loop()

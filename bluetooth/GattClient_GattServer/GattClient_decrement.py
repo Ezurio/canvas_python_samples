@@ -1,4 +1,5 @@
 import canvas_ble
+from canvas_ble import UUID
 import time
 
 SIZE_IN_BYTES = 4
@@ -7,8 +8,10 @@ scanner = None
 connection = None
 gatt_client = None
 
-# In this setup, if the remote devices makes the connection, 
+# In this setup, if the remote devices makes the connection,
 # the connection handle will be invalid.
+
+
 def ble_connected(conn):
     global connection
     connection = conn
@@ -25,7 +28,6 @@ def ble_disconnected(conn):
     time.sleep_ms(5000)
     print("Restarting scan")
     scanner.start(1)
-        
 
 
 def scan_result(result):
@@ -46,15 +48,13 @@ def start_scanning():
     scanner.start(1)
 
 
-def cb_notify(event):
-    print("Notify from UUID: ", event.uuid, " Name: ",
-          event.name, " Data: ", event.data.hex())
+def cb_notify_ind(event):
+    type = "Notify" if event.notify else "Indicate"
+    print(type + " from UUID: ", event.uuid, " Name: ",
+          event.name, " Data: ", event.data.decode('utf-8'))
 
 
-def cb_indicate(event):
-    print("Indicate from UUID: ", event.uuid, " Name: ",
-          event.name, " Data: ", event.data.hex())
-
+read_value = bytearray(SIZE_IN_BYTES)
 start_scanning()
 
 print("Waiting for connection")
@@ -62,12 +62,12 @@ while connection == None:
     time.sleep_ms(1000)
 
 gatt_client = canvas_ble.GattClient(connection)
-gatt_client.set_callbacks(cb_notify, cb_indicate)
+gatt_client.set_callback(cb_notify_ind)
 gatt_client.discover()
 
-gatt_client.set_name("d90d8245-8886-4b4b-9a6e-988de00922a8", "decr")
+gatt_client.set_name(UUID("d90d8245-8886-4b4b-9a6e-988de00922a8"), "decr")
 value = 10
 gatt_client.write("decr", value.to_bytes(SIZE_IN_BYTES, 'little'))
 time.sleep_ms(5000)
-read_value = gatt_client.read("decr")
+gatt_client.read("decr", read_value)
 print("Read value: ", int.from_bytes(read_value, 'little'))

@@ -1,4 +1,5 @@
 import canvas_ble as ble
+from canvas_ble import UUID
 import time
 
 
@@ -26,25 +27,17 @@ def cb_disconnected(conn):
 
 
 gatt_table = {
-    "Service 1": {
-        "Name": "S1",
-        "UUID": "b8d02d81-6329-ef96-8a4d-55b376d8b25a",
-        "Characteristic 1": {
-            "Name": "S1:C1",
-            "UUID": "b8d00001-6329-ef96-8a4d-55b376d8b25a",
-            "Length": 20,
-            "Read Encryption": "None",
-            "Write Encryption": "None",
-            "Capability": "Write",
-            "Callback": s1c1_cb
+    UUID('b8d02d81-6329-ef96-8a4d-55b376d8b25a'): {
+        UUID('b8d00001-6329-ef96-8a4d-55b376d8b25a'): {
+            "name": "S1:C1",
+            "length": 20,
+            "flags": ble.GattServer.FLAG_WRITE_NO_ACK,
+            "callback": s1c1_cb
         },
-        "Characteristic 2": {
-            "Name": "S1:C2",
-            "UUID": "b8d00004-6329-ef96-8a4d-55b376d8b25a",
-            "Length": 20,
-            "Read Encryption": "None",
-            "Write Encryption": "None",
-            "Capability": "Read"
+        UUID('b8d00004-6329-ef96-8a4d-55b376d8b25a'): {
+            "name": "S1:C2",
+            "length": 20,
+            "flags": ble.GattServer.FLAG_READ
         }
     }
 }
