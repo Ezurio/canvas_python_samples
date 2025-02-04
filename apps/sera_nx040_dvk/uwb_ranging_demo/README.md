@@ -1,7 +1,7 @@
 # UWB Ranging Demo Application
 This repository contains a Python script intended for use on the Sera NX040 DVK
 board to provide a demonstration of the UWB ranging capabilities. This can be
-used with the [Xbit Desktop tool](https://github.com/LairdCP/Canvas_Xbit_Desktop)
+used with the [Xbit Desktop tool](https://github.com/Ezurio/Canvas_Xbit_Desktop)
 to visualize ranging data.
 
 ## Loading onto the Sera NX040 DVK

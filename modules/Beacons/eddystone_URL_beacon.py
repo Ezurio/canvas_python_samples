@@ -4,7 +4,7 @@ import canvas_ble as ble
 # Use the 'Beacons' python module to create and advertise an eddystone beacon
 print('Eddystone Beacon Advertisment')
 
-my_eddystone = Eddystone_URL('https://lairdconnect.com', 10)
+my_eddystone = Eddystone_URL('https://ezurio.com', 10)
 
 print(my_eddystone.get_beacon())
 

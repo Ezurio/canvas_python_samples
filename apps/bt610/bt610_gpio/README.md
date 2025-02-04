@@ -2,7 +2,7 @@
 This repository contains a Python script intended for use on the Sentrius BT610 sensor to demonstrate use of pushbutton switches and LEDs. Button Press events are configured to trigger a callback function which then toggles the on-board LED.
 
 ## Loading Canvas Firmware onto the Sentrius BT610 Sensor
-The Sentrius BT610 Sensor must be running [Canvas Firmware](https://github.com/LairdCP/Sentrius_BT610_Canvas_Firmware). You can load this firmware (.hex file) using the [nRF Connect Desktop](https://www.nordicsemi.com/Products/Development-tools/nrf-connect-for-desktop) programmer application. You will need an appropriate SWD programming adapter such as the [USB-SWD Programming Kit](https://www.lairdconnect.com/wireless-modules/programming-kits/usb-swd-programming-kit) or a Segger J-Link adapter.
+The Sentrius BT610 Sensor must be running [Canvas Firmware](https://github.com/LairdCP/Sentrius_BT610_Canvas_Firmware). You can load this firmware (.hex file) using the [nRF Connect Desktop](https://www.nordicsemi.com/Products/Development-tools/nrf-connect-for-desktop) programmer application. You will need an appropriate SWD programming adapter such as the [USB-SWD Programming Kit](https://www.ezurio.com/wireless-modules/programming-kits/usb-swd-programming-kit) or a Segger J-Link adapter.
 
 Once Canvas Firmware is loaded, you can use [Xbit tools for VS Code](https://marketplace.visualstudio.com/items?itemName=rfp-canvas.xbit-vsc) to load Python scripts. You will need to attach an FTDI USB-UART cable from your workstation to the J1 header on the Sentrius BT610 board to access the Python REPL.
 

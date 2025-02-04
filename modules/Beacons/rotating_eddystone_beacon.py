@@ -15,7 +15,7 @@ battery = 3300
 current_object = 0
 
 # Create initial adverts
-eddy_url = Eddystone_URL('https://lairdconnect.com', ranging_data)
+eddy_url = Eddystone_URL('https://ezurio.com', ranging_data)
 eddy_uri = Eddystone_UID(namespace, beacon, ranging_data)
 eddy_tlm = Eddystone_TLM(False, battery, temperature)
 
