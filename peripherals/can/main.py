@@ -7,8 +7,6 @@ Requirements:
     SCK - SIO_41 (gpio 1,9)
     MOSI - SIO_40 (gpio 1,8)
     MISO - SIO_04 (gpio 0,4)
-    nWKRQ - SIO_11 (gpio 0,11)
-    wake - SIO_14 (gpio 0,14)
     reset - SIO_15 (gpio 0,15)
     nINT - SIO_12 (gpio 0,12)
 """
