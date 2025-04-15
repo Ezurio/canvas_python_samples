@@ -1,0 +1,26 @@
+---
+metadata:
+  name: "ibeacon_beacon"
+  description: "BLE iBeacon Advertiser"
+  version: 0.1.0
+supported_boards:
+  - bl5340_dvk_cpuapp
+  - bl653_dvk
+  - bl654_dvk
+  - bl654_usb
+  - bt510
+  - bt610
+  - mg100
+  - nrf52840dongle_nrf52840
+  - pinnacle_100_dvk
+  - sera_nx040_click
+  - sera_nx040_dvk
+  - sera_nx040_tag
+  - lyra24_p10
+  - lyra24_p20
+  - lyra24_s10
+  - lyra24_usb
+  - rs2xx
+  - brd2911a
+dependencies:
+  - beacon/ibeacon.py

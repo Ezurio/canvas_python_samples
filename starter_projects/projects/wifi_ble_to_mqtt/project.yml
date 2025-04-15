@@ -1,0 +1,12 @@
+---
+metadata:
+  name: "wifi_ble_to_mqtt"
+  description: "Wi-Fi based BLE to MQTT Gateway"
+  version: 0.1.0
+supported_boards:
+  - brd2911a
+dependencies:
+  - state_machine/state_machine.py
+  - networking/mqtt_client/mqtt_client.py
+  - networking/sntp_client/sntp_client.py
+  - config/config.py

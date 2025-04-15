@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="wifibars" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 512 512"  xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#aaa;}
+	.st1{fill:#da0000;}
+</style>
+<g>
+	<path id="bar3" class="st0" d="M0,180.936l46.543,46.552c115.485-115.485,303.429-115.485,418.914,0L512,180.936
+		C370.837,39.763,141.173,39.763,0,180.936z"/>
+	<path id="bar2" class="st0" d="M69.819,250.754l46.542,46.543c76.981-76.981,202.295-76.981,279.276,0l46.543-46.543
+		C339.503,148.085,172.496,148.085,69.819,250.754z"/>
+	<path id="bar1" class="st0" d="M139.629,320.582l46.552,46.543c38.496-38.496,101.143-38.496,139.638,0l46.552-46.543
+		C308.179,256.391,203.821,256.391,139.629,320.582z"/>
+	<path id="bar0" class="st0" d="M209.457,390.392L256,436.944l46.543-46.552C276.855,364.705,235.145,364.705,209.457,390.392z"/>
+</g>
+</svg>

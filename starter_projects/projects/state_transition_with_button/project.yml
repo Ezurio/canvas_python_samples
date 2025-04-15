@@ -1,0 +1,9 @@
+---
+metadata:
+  name: "state_transition_with_button"
+  description: "State Transition with Button"
+  version: 0.1.0
+supported_boards:
+  - brd2911a
+dependencies:
+  - state_machine/state_machine.py

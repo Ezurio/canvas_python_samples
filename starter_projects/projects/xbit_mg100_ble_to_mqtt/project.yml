@@ -1,0 +1,14 @@
+---
+metadata:
+  name: "xbit_mg100_ble_to_mqtt"
+  description: "Cellular/Ethernet based BLE to MQTT Gateway"
+  version: 0.1.0
+supported_boards:
+  - mg100
+  - pinnacle_100_dvk
+  - bl5340_dvk
+dependencies:
+  - networking/sntp_client/sntp_client.py
+  - config/config.py
+  - networking/mqtt_client/mqtt_client.py
+  - networking/net_helper/net_helper.py
