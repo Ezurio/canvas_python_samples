@@ -8,7 +8,7 @@ Requirements:
     MOSI - SIO_40 (gpio 1,8)
     MISO - SIO_04 (gpio 0,4)
     reset - SIO_15 (gpio 0,15)
-    nINT - SIO_12 (gpio 0,12)
+    nINT - SIO_34 (gpio 1,2)
 """
 
 import canvas
