@@ -33,7 +33,7 @@ class WifiBleToMqtt(StateMachine):
             # Check if the configuration is valid
             if self.app.is_config_valid():
                 print('\r\n(tick) -> [Idle]')
-                app.config_invalid_banner_shown == False
+                app.config_invalid_banner_shown = False
                 # Display the configuration (skipping passwords/passphrases)
                 print('Configuration:')
                 for key in self.app.required_config_keys:
@@ -386,6 +386,9 @@ class App:
         self.ble_scanner.stop_scan()
 
     def is_config_valid(self):
+        # If this boot had an invalid configuration, always return False
+        if app.config_invalid_banner_shown:
+            return False
         # Check if the configuration is valid
         self.required_config_keys = ['mqtt_client_id', 'mqtt_hostname', 'mqtt_port',
             'mqtt_user', 'mqtt_password', 'mqtt_keepalive', 
