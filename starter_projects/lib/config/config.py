@@ -49,8 +49,12 @@ class Config:
         for c in config_file:
             self.config[c] = config_file[c]
 
-    def get(self, key):
+    def get(self, key, default = None):
         if key in self.config:
+            return self.config[key]
+        # check for default value
+        if default is not None:
+            self.set(key, default)
             return self.config[key]
         return None
 
