@@ -1,5 +1,5 @@
 # Join a Wi-Fi network and send a ping to a remote host
-import network, time
+import network, time, ping
 
 # Join an internet-connected Wi-Fi network. For simplicity, the
 # Wi-Fi credentials are hard-coded.
@@ -15,10 +15,7 @@ try:
 
     # Send a ping to a remote host. For simplicity, the remote host is hard-coded.
     hostname = 'micropython.org'              # remote host to ping
-    for i in range(3):
-        print('Pinging ' + hostname + '...')
-        nic.ping(hostname)                        # send a ping
-        time.sleep(1)
+    ping.ping(hostname, verbose=True, count=3)
 
     nic.disconnect()                          # Disconnect from the network
 except Exception as e:
