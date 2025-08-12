@@ -2,6 +2,7 @@ import socket
 import struct
 import select
 from binascii import hexlify
+import os
 
 
 class MQTTException(Exception):
@@ -68,11 +69,19 @@ class MQTTClient:
     def connect(self, clean_session=True):
         self.sock = socket.socket()
         addr = socket.getaddrinfo(self.server, self.port)[0][-1]
-        self.sock.connect(addr)
+
+        # For Zephyr boards, connect before wrap
+        if os.uname()[0] == 'zephyr':
+            self.sock.connect(addr)
+
         if self.ssl:
             import ssl
-
             self.sock = ssl.wrap_socket(self.sock, **self.ssl_params)
+
+        # For non-Zephyr boards, wrap before connect
+        if os.uname()[0] != 'zephyr':
+            self.sock.connect(addr)
+
         premsg = bytearray(b"\x10\0\0\0\0\0")
         msg = bytearray(b"\x04MQTT\x04\x02\0\0")
 

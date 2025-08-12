@@ -1,7 +1,9 @@
 # This code demonstrates how to perform an HTTPS GET request providing
 # the certificate chain to verify the server's certificate.
 # It uses the `socket` and `ssl` modules to establish a secure connection.
-import socket, sys
+import socket
+import sys
+import os
 try:
     import ssl
     SUPPORT_SSL = True
@@ -78,13 +80,20 @@ def request(method, url, content=None, content_type=None, timeout=None, headers=
             assert SUPPORT_TIMEOUT, 'Socket does not support timeout'
             sock.settimeout(timeout)
 
+        # For Zephyr boards, connect before wrap
+        if os.uname()[0] == 'zephyr':
+            # print('Connecting to', addr)
+            sock.connect(addr)
+
         if proto == 'https:':
             assert SUPPORT_SSL, 'HTTPS not supported: could not find ssl'
             print('Wrapping in SSL')
             sock = ssl.wrap_socket(sock, **ssl_params)
 
-        # print('Connecting to', addr)
-        sock.connect(addr)
+        # For non-Zephyr boards, wrap before connect
+        if os.uname()[0] != 'zephyr':
+            # print('Connecting to', addr)
+            sock.connect(addr)
 
         # print('Connected, sending request')
         sock.write('%s /%s HTTP/1.1\r\nHost: %s\r\n' % (method, urlpath, host))
