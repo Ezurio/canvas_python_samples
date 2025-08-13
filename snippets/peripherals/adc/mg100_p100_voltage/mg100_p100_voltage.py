@@ -16,7 +16,7 @@ elif "pinnacle_100_dvk" != os.uname().machine:
 
 # The following constant values are based on the MG100 and Pinnacle 100 DVK hardware.
 MEASURE_EN_PIN = 'VIN_ADC_EN'
-ADC_CHANNEL = 5
+ADC_CHANNEL = 6
 ATTENUATION = 4
 if is_mg100:
     MEASURE_EN_PIN = 'VBAT_EN'
