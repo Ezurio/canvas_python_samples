@@ -20,7 +20,7 @@ from mqtt import TimeoutException
 
 class App:
     app_id = 'veda_sl917_explorer_board_ap_demo'
-    app_ver = '0.2.2'
+    app_ver = '0.3.0'
     fmt_cyan = "\x1b[1;38;5;87m"
     fmt_green = "\x1b[38;5;231;48;5;28m"
     fmt_stop = "\x1b[0m"
@@ -181,15 +181,17 @@ class App:
 
     def connect_station(self, retries):
         for retries in range(retries):
-            if(retries > 0):
-                print('Connection failed, retrying...')
-            self.sta.connect(self.config['sta_ssid'], self.config['sta_passphrase'])
-            if self.sta.is_connected():
-                self.led0.on()
-                return True
-            else:
-                self.led0.off()
-                time.sleep(1)
+            try:
+                self.sta.connect(self.config['sta_ssid'], self.config['sta_passphrase'])
+                if self.sta.is_connected():
+                    self.led0.on()
+                    return True
+            except Exception as e:
+                # On exception, just retry
+                pass
+            print('Connection failed, retrying...')
+            self.led0.off()
+            time.sleep(1)
         
         print('Connection failed, entering configuration mode')
         return False
@@ -392,6 +394,9 @@ class App:
                 # Connection successful, do not enter configuration mode
                 self.enter_configuration_mode = False
                 return True
+            else:
+                print('Failed to connect to network with retry attempts, entering configuration mode')
+                self.enter_configuration_mode = True
         else:
             print('Saved ssid/passphrase not found, entering configuration mode')
             self.enter_configuration_mode = True
