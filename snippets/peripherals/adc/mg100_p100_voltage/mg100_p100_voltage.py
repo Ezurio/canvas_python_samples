@@ -20,7 +20,7 @@ ADC_CHANNEL = 5
 ATTENUATION = 4
 if is_mg100:
     MEASURE_EN_PIN = 'VBAT_EN'
-    ADC_CHANNEL = 0
+    ADC_CHANNEL = 1
     # There is enough headroom to use a gain of 1 on the MG100.
     # This gives us the best resolution when reading the battery voltage.
     ATTENUATION = 1
