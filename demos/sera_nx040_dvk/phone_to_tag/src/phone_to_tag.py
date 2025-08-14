@@ -6,6 +6,8 @@ import machine
 import struct
 import os
 import time
+from canvas_ble import UUID
+from micropython import const
 
 ##############################################################################
 # Local variables
@@ -35,6 +37,14 @@ LED_BLINK_TIME = 100 # milliseconds
 rgb_led = None
 leds = [ ]
 led_timer = None
+
+# Characteristic UUIDs
+QPP_TX_UUID = UUID('6E400003-B5A3-F393-E0A9-E50E24DCCA9E')
+NEARBY_DATA_UUID = UUID('95e8d9d5-d8ef-4721-9a4e-807375f53328')
+
+# GATT Characteristic Flags
+FLAG_READ_ENCRYPT = const(0x00000002)
+FLAG_WRITE_ENCRYPT = const(0x00000020)
 
 ##############################################################################
 # Functions
@@ -164,10 +174,10 @@ def initialize_ios():
     data += [ 100, 0 ] # Clock drift
 
     # Update the Nearby data characteristic
-    gattserver.write("Nearby Data", bytes(data[1:]))
+    gattserver.write(NEARBY_DATA_UUID, bytes(data[1:]))
 
     # Send the response back to the phone
-    gattserver.notify(connection, "QPP TX", bytes(data))
+    gattserver.notify(connection, QPP_TX_UUID, bytes(data))
 
 def initialize_android():
     print("Received QPP RX Initialize message for Android")
@@ -189,7 +199,7 @@ def initialize_android():
     data += [ addr & 0xff, addr >> 8 ] # Device MAC address
     
     # Send the response back to the phone
-    gattserver.notify(connection, "QPP TX", bytes(data))
+    gattserver.notify(connection, QPP_TX_UUID, bytes(data))
 
 def configure_ios(data):
     global session
@@ -206,10 +216,10 @@ def configure_ios(data):
     print("UWB session started")
 
     # Clear the Nearby characteristic
-    gattserver.write("Nearby Data", bytes(48))
+    gattserver.write(NEARBY_DATA_UUID, bytes(48))
 
     # Send the response back to the phone
-    gattserver.notify(connection, "QPP TX", bytes([2]))
+    gattserver.notify(connection, QPP_TX_UUID, bytes([2]))
 
 def configure_android(data):
     global session
@@ -224,7 +234,7 @@ def configure_android(data):
     #     5 = Profile
     #     6 = Role
     #     7 = Peer MAC address
-    msg = struct.unpack(">HHLBBBBH", data)
+    msg = struct.unpack(">HHiBBBBH", data)
     print("Unpacked Android Configure message:", msg)
 
     # Invert the bytes of the peer address
@@ -265,7 +275,7 @@ def configure_android(data):
     print("UWB session started")
 
     # Send the response back to the phone
-    gattserver.notify(connection, "QPP TX", bytes([2]))
+    gattserver.notify(connection, QPP_TX_UUID, bytes([2]))
 
 def stop_ranging():
     global session
@@ -278,7 +288,7 @@ def stop_ranging():
         session = None
 
     # Send the response back to the phone
-    gattserver.notify(connection, "QPP TX", bytes([3]))
+    gattserver.notify(connection, QPP_TX_UUID, bytes([3]))
 
 def qpp_rx_cb(event):
     global ios
@@ -324,38 +334,25 @@ def qpp_rx_cb(event):
     else:
         print("Invalid QPP RX message type:", event.data[0])
 
-GATT_TABLE = {
-    "Service 1": {
-        "Name": "QPPS",
-        "UUID": "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
-        "Characteristic 1": {
-            "Name": "QPP RX",
-            "UUID": "6E400002-B5A3-F393-E0A9-E50E24DCCA9E",
-            "Length": 64,
-            "Read Encryption": "None",
-            "Write Encryption": "None",
-            "Capability": "Write",
-            "Callback": qpp_rx_cb
+gatt_dict = {
+    UUID('6E400001-B5A3-F393-E0A9-E50E24DCCA9E'): {
+        UUID('6E400002-B5A3-F393-E0A9-E50E24DCCA9E'): {
+            "name": "QPP RX",
+            "flags": canvas_ble.GattServer.FLAG_WRITE_NO_ACK,
+            "length": 64,
+            "callback": qpp_rx_cb
         },
-        "Characteristic 2": {
-            "Name": "QPP TX",
-            "UUID": "6E400003-B5A3-F393-E0A9-E50E24DCCA9E",
-            "Length": 64,
-            "Read Encryption": "None",
-            "Write Encryption": "None",
-            "Capability": "Notify",
+        UUID('6E400003-B5A3-F393-E0A9-E50E24DCCA9E'): {
+            "name": "QPP TX",
+            "flags": canvas_ble.GattServer.FLAG_NOTIFY,
+            "length": 64
         }
     },
-    "Service 2": {
-        "Name": "Nearby",
-        "UUID": "48fe3e40-0817-4bb2-8633-3073689c2dba",
-        "Characteristic 1": {
-            "Name": "Nearby Data",
-            "UUID": "95e8d9d5-d8ef-4721-9a4e-807375f53328",
-            "Length": 48,
-            "Read Encryption": "Encrypt",
-            "Write Encryption": "None",
-            "Capability": "Read",
+    UUID('48fe3e40-0817-4bb2-8633-3073689c2dba'): {
+        UUID('95e8d9d5-d8ef-4721-9a4e-807375f53328'): {
+            "name": "Nearby Data",
+            "flags": canvas_ble.GattServer.FLAG_READ | FLAG_READ_ENCRYPT,
+            "length": 48
         }
     }
 }
@@ -372,7 +369,7 @@ led_timer.start()
 canvas_ble.init()
 canvas_ble.set_periph_callbacks(ble_conn_cb, ble_disconn_cb)
 gattserver = canvas_ble.GattServer()
-gattserver.build_from_dict(GATT_TABLE)
+gattserver.build_from_dict(gatt_dict)
 gattserver.start()
 
 # Start advertising
