@@ -20,7 +20,7 @@ from mqtt import TimeoutException
 
 class App:
     app_id = 'veda_sl917_explorer_board_ap_demo'
-    app_ver = '0.3.0'
+    app_ver = '0.3.1'
     fmt_cyan = "\x1b[1;38;5;87m"
     fmt_green = "\x1b[38;5;231;48;5;28m"
     fmt_stop = "\x1b[0m"
@@ -144,7 +144,7 @@ class App:
     def ble_scan_result_canvas_bt510_cb(self, e):
         beacon = self.get_canvas_bt510_beacon(e)
         if beacon is not None:
-            if (time.ticks_ms() - self.last_bt510_report_ms) > 5000:
+            if abs(time.ticks_diff(time.ticks_ms(), self.last_bt510_report_ms)) > 5000:
                 self.is_scanning_ble = False
                 self.ble_scanner.stop()
                 self.last_bt510_report_ms = time.ticks_ms()
@@ -153,7 +153,7 @@ class App:
     def ble_scan_result_any_cb(self, e):
         if not self.scan_results_has_address(e.addr):
             self.ble_scan_result_list.append(e)
-            if len(self.ble_scan_result_list) >= 10 or (time.ticks_ms() - self.ble_scan_start_time) > self.config['ble_scan_timeout_ms']:
+            if len(self.ble_scan_result_list) >= 10 or abs(time.ticks_diff(time.ticks_ms(), self.ble_scan_start_time)) > self.config['ble_scan_timeout_ms']:
                 self.is_scanning_ble = False
                 self.ble_scanner.stop()
                 self.ble_scan_complete()
@@ -462,12 +462,21 @@ class App:
         # Reconnect the MQTT client
         if self.mqtt is not None:
             if self.mqtt.sock is not None:
-                self.mqtt.disconnect()
-            self.mqtt.connect()
-            self.publish_ssid()
-            self.publish_version()
-            self.publish_btn_led()
-            self.subscribe_message()
+                print('Disconnecting MQTT client...')
+                try:
+                    self.mqtt.disconnect()
+                except Exception as e:
+                    print('Error disconnecting MQTT client:', e)
+            print('Connecting MQTT client...')
+            try:
+                self.mqtt.connect()
+                self.publish_ssid()
+                self.publish_version()
+                self.publish_btn_led()
+                self.subscribe_message()
+            except Exception as e:
+                print('Error connecting MQTT client:', e)
+                pass
 
     def start_mqtt(self):
         # If the username/access token is not set, do not connect
@@ -680,7 +689,13 @@ class App:
                     # if keyboard exception is raised, just break out of the loop
                     if 'KeyboardInterrupt' in str(e):
                         break
-                    print('OSError, reconnecting...')
+                    print('MQTT connection lost, reconnecting... (OSError)')
+                    # Print whether the network interface is connected
+                    if self.sta.is_connected():
+                        print('Network interface is up')
+                    else:
+                        print('Network interface is down, reconnecting...')
+                        self.connect_if_configured()
                     self.reconnect_mqtt()
                 except TimeoutException as e:
                     if 'KeyboardInterrupt' in str(e):
@@ -690,13 +705,13 @@ class App:
                 except Exception as e:
                     if 'KeyboardInterrupt' in str(e):
                         break
-                    print('Exception from mqtt.wait_msg(), reconnecting...')
+                    print('MQTT connection lost, reconnecting... (Exception)')
                     sys.print_exception(e)
                     self.reconnect_mqtt()
                 gc.collect()
             
                 # Ping the MQTT server to keep the connection alive
-                if time.ticks_diff(time.ticks_ms(), self.mqtt_ping_time_counter) > self.mqtt_ping_interval_ms:
+                if abs(time.ticks_diff(time.ticks_ms(), self.mqtt_ping_time_counter)) > self.mqtt_ping_interval_ms:
                     try:
                         self.mqtt_do_ping()
                     except Exception as e:
@@ -723,7 +738,7 @@ class App:
                 time.sleep(1)
             
             if self.config['gateway_canvas_bt510']:
-                if (time.ticks_ms() - self.last_bt510_beacon_publish_ms) > 5000:
+                if abs(time.ticks_diff(time.ticks_ms(), self.last_bt510_beacon_publish_ms)) > 5000:
                     if self.is_scanning_ble == False:
                         self.ble_scanner.start(1)
                         self.is_scanning_ble = True

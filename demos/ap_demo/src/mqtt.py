@@ -128,6 +128,7 @@ class MQTTClient:
         except:
             pass
         self.sock.close()
+        self.sock = None
 
     def ping(self):
         self.sock.write(b"\xc0\0")
