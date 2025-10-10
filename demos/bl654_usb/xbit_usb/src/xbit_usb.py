@@ -1,5 +1,5 @@
 app_id='xbit_usb'
-app_ver='0.1.1'
+app_ver='2.0.0'
 
 import sys
 import xbit_lib

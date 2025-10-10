@@ -88,7 +88,21 @@ def scanFilterAdd(filter_type_str, filter_value):
     global rpc_id
     if scanner != None:
         try:
-            scanner.filter_add(eval('canvas_ble.Scanner.' + filter_type_str), filter_value)
+            if filter_type_str == 'FILTER_NAME':
+                # for FILTER_NAME, filter_value is a string
+                scanner.filter_add(canvas_ble.Scanner.FILTER_NAME, filter_value)
+            elif filter_type_str == 'FILTER_UUID':
+                # for FILTER_UUID, filter_value is a byte string of 16, 32 or 128 bits
+                scanner.filter_add(canvas_ble.Scanner.FILTER_UUID, binascii.unhexlify(filter_value))
+            elif filter_type_str == 'FILTER_ADDR':
+                # for FILTER_ADDR, filter_value is a byte string of 48 bits
+                scanner.filter_add(canvas_ble.Scanner.FILTER_ADDR, binascii.unhexlify(filter_value))
+            elif filter_type_str == 'FILTER_MANUF_DATA':
+                # for FILTER_MANUF_DATA, filter_value is a byte string of arbitrary length
+                scanner.filter_add(canvas_ble.Scanner.FILTER_MANUF_DATA, binascii.unhexlify(filter_value))
+            elif filter_type_str == 'FILTER_DATA':
+                # for FILTER_DATA, filter_value is a byte string of arbitrary length
+                scanner.filter_add(canvas_ble.Scanner.FILTER_DATA, binascii.unhexlify(filter_value))
         except:
             print("{'i':" + str(rpc_id) + ",'e':'EXISTS'}")
             return
@@ -138,7 +152,26 @@ def bleGetGattDictionary():
         except:
             print("{'i':" + str(rpc_id) + ", 'e':'NODICT'}")
             return
-        print("{'i':" + str(rpc_id) + ",'j':" + str(gatt_dict) + "}")
+        # Check to see if the gatt_dict dictionary contains a non-string key
+        gatt_dict_version = 1
+        if getattr(canvas_ble, 'UUID', None) is not None:
+            gatt_dict_version = 2
+        if gatt_dict_version == 1:
+            # For Canvas 1.x, convert the gatt_dict to a string directly
+            print("{'i':" + str(rpc_id) + ",'j':" + str(gatt_dict) + "}")
+        else:
+            # For Canvas 2.x, convert the gatt_dict to a JSON-compatible string
+            # iterate through keys and convert any UUID objects to strings
+            d = {}
+            for key in list(gatt_dict.keys()):
+                if isinstance(key, canvas_ble.UUID):
+                    service_key = uuidToStr(key)
+                    if len(service_key) > 0:
+                        d[service_key] = {}
+                        for subkey in list(gatt_dict[key].keys()):
+                            characteristic_key = uuidToStr(subkey)
+                            d[service_key][characteristic_key] = gatt_dict[key][subkey]
+            print("{'i':" + str(rpc_id) + ",'j':" + str(d) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
 
@@ -147,6 +180,9 @@ def bleSetGattName(uuid,char_name):
     global gatt_client
     global rpc_id
     if gatt_client != None:
+        # If canvas_ble has a UUID class, use it to convert char_name to a UUID object
+        if getattr(canvas_ble, 'UUID', None) is not None:
+            uuid = canvas_ble.UUID(uuid)
         try:
             gatt_client.set_name(uuid, char_name)
         except:
@@ -161,12 +197,25 @@ def bleNotifyEnable(char_name):
     global gatt_client
     global rpc_id
     if gatt_client != None:
-        try:
-            gatt_client.enable(char_name, canvas_ble.GattClient.CCCD_STATE_NOTIFY)
-        except:
-            print("{'i':" + str(rpc_id) + ", 'e':'EXISTS'}")
-            return
-        print("{'i':" + str(rpc_id) + "}")
+        # First try Canvas v1.x 'enable' method
+        if getattr(gatt_client, 'enable', None) is not None:
+            try:
+                gatt_client.enable(char_name, canvas_ble.GattClient.CCCD_STATE_NOTIFY)
+            except:
+                print("{'i':" + str(rpc_id) + ", 'e':'EXISTS'}")
+                return
+            print("{'i':" + str(rpc_id) + "}")
+        else:
+            # If that fails, use Canvas v2.x 'subscribe' method
+            try:
+                if isUuid(char_name):
+                    gatt_client.subscribe(canvas_ble.UUID(char_name), True, False)
+                else:
+                    gatt_client.subscribe(char_name, True, False)
+            except:
+                print("{'i':" + str(rpc_id) + ", 'e':'EXISTS'}")
+                return
+            print("{'i':" + str(rpc_id) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
 
@@ -175,20 +224,36 @@ def bleNotifyDisable(char_name):
     global gatt_client
     global rpc_id
     if gatt_client != None:
-        try:
-            gatt_client.enable(char_name, canvas_ble.GattClient.CCCD_STATE_DISABLE)
-        except:
-            print("{'i':" + str(rpc_id) + ", 'e':'NOEXIST'}")
-            return
-        print("{'i':" + str(rpc_id) + "}")
+        # First try Canvas v1.x 'enable' method
+        if getattr(gatt_client, 'enable', None) is not None:
+            try:
+                gatt_client.enable(char_name, canvas_ble.GattClient.CCCD_STATE_DISABLE)
+            except:
+                print("{'i':" + str(rpc_id) + ", 'e':'NOEXIST'}")
+                return
+            print("{'i':" + str(rpc_id) + "}")
+        else:
+            # If that fails, use Canvas v2.x 'subscribe' method
+            try:
+                if isUuid(char_name):
+                    gatt_client.subscribe(canvas_ble.UUID(char_name), False, False)
+                else:
+                    gatt_client.subscribe(char_name, False, False)
+            except:
+                print("{'i':" + str(rpc_id) + ", 'e':'NOEXIST'}")
+                return
+            print("{'i':" + str(rpc_id) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
 
-# send a read request over BLE to the requested characteristic ID for the specified connection handle
+# Send a read request over BLE to the requested characteristic ID
 def bleRead(char_name):
     global gatt_client
     global rpc_id
     if gatt_client != None:
+        # If canvas_ble has a UUID class, use it to convert char_name to a UUID object
+        if getattr(canvas_ble, 'UUID', None) is not None:
+            char_name = canvas_ble.UUID(char_name)
         try:
             data = gatt_client.read(char_name)
             print("{'i':" + str(rpc_id) + ",'b':'" + data.hex() + "'}")
@@ -199,17 +264,27 @@ def bleRead(char_name):
         print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
         return
 
-# send a write of 'data' over BLE to the requested characteristic ID for the specified connection handle
+# Send a write of 'data' over BLE to the requested characteristic ID
 def bleWrite(char_name, data):
     global gatt_client
     global rpc_id
     if gatt_client != None:
-        try:
-            gatt_client.write(char_name, bytes(data))
-        except:
-            print("{'i':" + str(rpc_id) + ", 'e':'WERROR'}")
-            return
-        print("{'i':" + str(rpc_id) + "}")
+        # If canvas_ble has a UUID class, use it to convert char_name to a UUID object
+        if getattr(canvas_ble, 'UUID', None) is not None:
+            char_name = canvas_ble.UUID(char_name)
+            try:
+                gatt_client.write(char_name, bytes(data), None)
+            except:
+                print("{'i':" + str(rpc_id) + ", 'e':'WERROR'}")
+                return
+            print("{'i':" + str(rpc_id) + "}")
+        else:
+            try:
+                gatt_client.write(char_name, bytes(data))
+            except:
+                print("{'i':" + str(rpc_id) + ", 'e':'WERROR'}")
+                return
+            print("{'i':" + str(rpc_id) + "}")
     else:
         print("{'i':" + str(rpc_id) + ",'e':'NOCLIENT'}")
 
@@ -243,7 +318,12 @@ def con_cb(conn):
     global connection
     connection = conn
     gatt_client = canvas_ble.GattClient(connection)
-    gatt_client.set_callbacks(notify_cb, indicate_cb)
+    # First try Canvas v1.x set_callbacks method
+    try :
+        gatt_client.set_callbacks(notify_cb, indicate_cb)
+    except :
+        # If that fails, try Canvas v2.x set_callback method
+        gatt_client.set_callback(notify_indicate_cb)
     gatt_client.discover()
     print("{'m':'bleConnect','d':'" + binascii.hexlify(conn.get_addr()).decode() + "'}")
 
@@ -261,12 +341,43 @@ def discon_cb(conn):
 
 # BLE notification callback
 def notify_cb(event):
-    # if name is empty, use the uuid instead
-    if len(event.name) == 0:
-        print("{'m':'bleNotify','n':'" + event.uuid + "','b':'" + event.data.hex() + "'}")
+    # Canvas 1.x firmware includes 'name' attribute in event object
+    if hasattr(event, 'name') and event.name is not None:
+        # if name is empty, use the uuid instead
+        if len(event.name) == 0:
+            print("{'m':'bleNotify','n':'" + event.uuid + "','b':'" + event.data.hex() + "'}")
+        else:
+            print("{'m':'bleNotify','n':'" + event.name + "','b':'" + event.data.hex() + "'}")
     else:
-        print("{'m':'bleNotify','n':'" + event.name + "','b':'" + event.data.hex() + "'}")
+        # Canvas 2.x firmware does not include 'name' attribute in event object
+        print("{'m':'bleNotify','n':'" + uuidToStr(event.uuid) + "','b':'" + event.data.hex() + "'}")
 
 # BLE indication callback
 def indicate_cb(event):
     print("{'m':'bleIndicate','n':'" + event.name + "','b':'" + event.data.hex() + "'}")
+
+def notify_indicate_cb(event):
+    # single callback for both notify and indicate events
+    if event.notify:
+        notify_cb(event)
+    else:
+        indicate_cb(event)
+
+# Check if the string contains a UUID in either full or short format
+def isUuid(val):
+    if str(val)[8] == '-' and str(val)[13] == '-' and str(val)[18] == '-' and str(val)[23] == '-':
+        return True
+    elif str(val).lower().startswith('0x'):
+        return True
+    return False
+
+# Convert a UUID object to a string in either full or short format
+def uuidToStr(uuid):
+    keystr = ''
+    if str(uuid).startswith("UUID('") and str(uuid)[14] == '-' and str(uuid)[19] == '-' and str(uuid)[24] == '-' and str(uuid)[29] == '-':
+        # full UUID
+        keystr = str(uuid).upper()[6:-2]
+    elif str(uuid).upper().startswith('UUID(0X'):
+        # short UUID
+        keystr = '0x' + str(uuid).upper()[7:-1]
+    return keystr
