@@ -16,6 +16,8 @@ class Sender:
         self.SEND_DATA = b"12345678"  # Data to send
         self.SEND_AMOUNT = 1000  # Number of messages to send
         self.SLEEP_DELAY_MS = 2000  # Delay before sleeping in milliseconds
+        self.filters = []
+        self.sleeping = True
 
         if "bl54l" in os.uname().machine:
             # Set WKP low to avoid excessive current draw on CAN FD 6 click
@@ -23,8 +25,7 @@ class Sender:
             wkp.off()
 
         self.can = CAN(CAN.MODE_NORMAL, False, self.can_rx_callback)
-        self.sleeping = False
-        self.filters = []
+        self.can_resume()
 
     def can_rx_callback(self, frame: tuple):
         pass
@@ -33,14 +34,16 @@ class Sender:
         for f in self.filters:
             self.can.remove_filter(f)
         self.filters.clear()
+        self.can.stop()
         self.can.suspend()
         self.sleeping = True
         print("CAN in sleep mode")
 
     def can_resume(self):
+        if not self.sleeping:
+            return
         try:
             self.can.resume()
-            self.can.stop()
         except:
             pass
         # Accept all frames
@@ -48,6 +51,7 @@ class Sender:
         self.filters.append(self.can.add_filter(0, 0, CAN.FILTER_IDE))
         self.can.set_bitrate(250000)
         self.can.start()
+        self.sleeping = False
 
     def restart_can(self):
         if self.sleeping:

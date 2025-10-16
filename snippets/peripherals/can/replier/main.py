@@ -14,7 +14,8 @@ class Replier:
     def __init__(self):
         self.REPLY_INTERVAL_MS = 100  # Interval to send replies
         self.REPLY_TIMEOUT_MS = 500  # Timeout for sending a reply
-
+        self.filters = []
+        self.sleeping = True
         self.can_queue = []
 
         if "bl54l" in os.uname().machine:
@@ -23,8 +24,7 @@ class Replier:
             wkp.off()
 
         self.can = CAN(CAN.MODE_NORMAL, False, self.can_rx_callback)
-        self.sleeping = False
-        self.filters = []
+        self.can_resume()
 
     def can_rx_callback(self, frame: tuple):
         try:
@@ -36,14 +36,16 @@ class Replier:
         for f in self.filters:
             self.can.remove_filter(f)
         self.filters.clear()
+        self.can.stop()
         self.can.suspend()
         self.sleeping = True
         print("CAN in sleep mode")
 
     def can_resume(self):
+        if not self.sleeping:
+            return
         try:
             self.can.resume()
-            self.can.stop()
         except:
             pass
         # Accept all frames
@@ -51,6 +53,7 @@ class Replier:
         self.filters.append(self.can.add_filter(0, 0, CAN.FILTER_IDE))
         self.can.set_bitrate(250000)
         self.can.start()
+        self.sleeping = False
 
     def restart_can(self):
         if self.sleeping:
