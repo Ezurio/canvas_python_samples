@@ -11,8 +11,10 @@ Requirements:
 import canvas
 import machine
 import os
+import time
 
 READ_SIZE = 2048
+REBOOT_DELAY_SECS = 5
 updating = False
 
 
@@ -51,10 +53,11 @@ def update_firmware(file_name='update.bin'):
         print('\r\tUpdating {}% ({}/{})..........'.format(round(written /
               file_size * 100.0), written, file_size), end='')
 
-    print('\nImage written')
+    print('\r\nImage written')
     dfu.request_upgrade()
+    print('Upgrade requested, rebooting in {} seconds...'.format(REBOOT_DELAY_SECS))
+    time.sleep(REBOOT_DELAY_SECS)
     updating = False
-    print('Upgrade requested, rebooting...')
     machine.reset()
 
 
