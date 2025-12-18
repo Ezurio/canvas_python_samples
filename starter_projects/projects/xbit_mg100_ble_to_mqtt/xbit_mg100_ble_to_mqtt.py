@@ -33,14 +33,6 @@ app_ver = '1.1.0'
 #   mqtt_ca_cert_file: MQTT CA certificate file
 #   mqtt_keepalive: MQTT keepalive period
 #
-# Configuration options for LwM2M (optional):
-#   lwm2m_url: LwM2M server URL (or bootstrap server URL if lwm2m_bootstrap is set)
-#   lwm2m_security_mode: LwM2M security mode (0 = PSK, 3 = no security)
-#   lwm2m_bootstrap: 1 if using a bootstrap server, 0 otherwise
-#   lwm2m_psk_id: LwM2M PSK ID (if lwm2m_security_mode is 0)
-#   lwm2m_psk: LwM2M PSK (if lwm2m_security_mode is 0)
-#   lwm2m_reg_update_time: LwM2M registration update time (if lwm2m_bootstrap is 0)
-#
 # Configuration options for SNTP (optional):
 #    sntp_hostname: SNTP server hostname (optional, will use pool.ntp.org if not set)
 #    sntp_period: SNTP update period (seconds, optional, will use 3600 if not set)
@@ -78,11 +70,6 @@ app_ver = '1.1.0'
 # temperature is published. Otherwise, the temperature is published every
 # PUBLISH_PERIOD milliseconds.
 #
-# The application will connect to the specific LwM2M server and register
-# with it. If lwm2m_bootstrap is set, then the application will register
-# with the bootstrap server and then register with the LwM2M server. If
-# lwm2m_bootstrap is not set, then the application will register directly
-# with the LwM2M server.
 
 
 # Always send if delta is greater than this
@@ -94,8 +81,6 @@ PUBLISH_PERIOD = 60000
 # Print every this many milliseconds
 PRINT_PERIOD = 10000
 
-# LwM2M retry period
-LWM2M_RETRY_PERIOD = 10000  # 10 seconds
 
 # BLE scanner
 scanner = None
@@ -271,154 +256,6 @@ class MqttClient:
             self.stop()
 
 
-class LwM2MClient:
-    EVENTS = [
-        "NONE",
-        "BOOTSTRAP_REG_FAILURE",
-        "BOOTSTRAP_REG_COMPLETE",
-        "BOOTSTRAP_TRANSFER_COMPLETE",
-        "REGISTRATION_FAILURE",
-        "REGISTRATION_COMPLETE",
-        "REG_TIMEOUT",
-        "REG_UPDATE_COMPLETE",
-        "DEREGISTER_FAILURE",
-        "DISCONNECT",
-        "QUEUE_MODE_RX_OFF",
-        "ENGINE_SUSPENDED",
-        "NETWORK_ERROR",
-        "REG_UPDATE",
-        "DEREGISTER"
-    ]
-
-    def __init__(self, config):
-        self.client = None
-        self.watchdog_timer = None
-        self.restart_timer = None
-
-        # Verify the configuration
-        url = config.get("lwm2m_url")
-        if url is None:
-            print("lwm2m_url not set in configuration")
-            return
-
-        self.bootstrap = config.get("lwm2m_bootstrap")
-        if self.bootstrap is None:
-            self.bootstrap = 0
-        if self.bootstrap != 0 and self.bootstrap != 1:
-            raise Exception("Invalid lwm2m_bootstrap value in configuration")
-
-        if self.bootstrap == 0:
-            reg_update_time = config.get("lwm2m_reg_update_time")
-            if reg_update_time is None:
-                reg_update_time = 60
-
-        security_mode = config.get("lwm2m_security_mode")
-        if security_mode is None:
-            security_mode = canvas_net.Lwm2m.SECURITY_NOSEC
-
-        if security_mode == canvas_net.Lwm2m.SECURITY_PSK:
-            psk_id = config.get("lwm2m_psk_id")
-            psk = config.get("lwm2m_psk")
-            if psk_id is None or psk is None:
-                raise Exception(
-                    "lwm2m_psk_id or lwm2m_psk not set in configuration")
-        elif security_mode != canvas_net.Lwm2m.SECURITY_NOSEC:
-            raise Exception("Invalid lwm2m_security_mode in configuration")
-
-        # Set the endpoint name
-        board_type = os.uname().machine
-        if board_type == "bl5340_dvk_cpuapp":
-            board_type = "bl5340"
-        elif board_type == "pinnacle_100_dvk":
-            board_type = "p100"
-        endpoint = board_type + "_" + \
-            binascii.hexlify(machine.unique_id()).decode()
-
-        # Configure the LwM2M client
-        self.client = canvas_net.Lwm2m(self.event_cb)
-        self.client.set_endpoint_name(endpoint)
-        self.client.set((self.client.OBJ_SECURITY, 0, 0), url)
-        self.client.set((self.client.OBJ_SECURITY, 0, 1), self.bootstrap)
-        self.client.set((self.client.OBJ_SECURITY, 0, 2), security_mode)
-
-        # Set the PSK if we're using one
-        if security_mode == canvas_net.Lwm2m.SECURITY_PSK:
-            self.client.set((self.client.OBJ_SECURITY, 0, 3), psk_id)
-            self.client.set((self.client.OBJ_SECURITY, 0, 5), psk)
-
-        # If not bootstrap, need to create the server object instance
-        if self.bootstrap == 0:
-            self.client.set((self.client.OBJ_SECURITY, 0, 10), 101)
-            self.client.create((self.client.OBJ_SERVER, 0))
-            self.client.set((self.client.OBJ_SERVER, 0, 0), 101)
-            self.client.set((self.client.OBJ_SERVER, 0, 1), reg_update_time)
-
-        # Set up the device object
-        self.client.create((self.client.OBJ_DEVICE, 0, 0), 32)
-        self.client.set((self.client.OBJ_DEVICE, 0, 0), "Ezurio")
-        self.client.create((self.client.OBJ_DEVICE, 0, 3), 32)
-        self.client.set((self.client.OBJ_DEVICE, 0, 3), os.uname().release)
-        self.client.create((self.client.OBJ_DEVICE, 0, 17), 32)
-        self.client.set((self.client.OBJ_DEVICE, 0, 17), os.uname().machine)
-        self.client.set_exec_handler(
-            (self.client.OBJ_DEVICE, 0, 4), self.reboot_exec_cb)
-
-    def restart_timer_cb(self, data):
-        print("Restart LwM2M client")
-        self.start()
-
-    def watchdog_timer_cb(self, data):
-        # Stop the watchdog timer
-        if self.watchdog_timer is not None:
-            self.watchdog_timer.stop()
-
-        # If the watchdog expires, stop the client and restart it later
-        print("LwM2M watchdog expired")
-        self.client.stop(False)
-        if self.restart_timer is None:
-            self.restart_timer = canvas.Timer(
-                LWM2M_RETRY_PERIOD, False, self.restart_timer_cb, None)
-        self.restart_timer.start()
-
-    def event_cb(self, evt):
-        print("LwM2M event: {}".format(LwM2MClient.EVENTS[evt]))
-
-        # On disconnect or error, stop the client and restart it later
-        if evt == self.client.EV_RD_DISCONNECT or evt == self.client.EV_RD_NETWORK_ERROR:
-            # Treat this the same as the watchdog expiration
-            self.watchdog_timer_cb(None)
-
-        # On registration/registration update, reset the watchdog
-        elif evt == self.client.EV_RD_REGISTRATION_COMPLETE or evt == self.client.EV_RD_REG_UPDATE_COMPLETE:
-            reg_update_time = self.client.get_int(
-                (self.client.OBJ_SERVER, 0, 1))
-            if reg_update_time is None or reg_update_time < 60:
-                reg_update_time = 60
-
-            # Watchdog for twice the registration update time, in milliseconds
-            reg_update_time *= 2 * 1000
-
-            if self.watchdog_timer is not None:
-                self.watchdog_timer.change_period(reg_update_time)
-            else:
-                self.watchdog_timer = canvas.Timer(
-                    reg_update_time, False, self.watchdog_timer_cb, None)
-
-    def reboot_exec_cb(self, evt):
-        self.client.stop(True)
-        print("Rebooting in 2 seconds...")
-        time.sleep(2)
-        machine.reset()
-
-    def start(self):
-        if self.client is not None:
-            self.client.start(self.bootstrap != 0)
-
-    def stop(self, dereg: bool):
-        if self.client is not None:
-            self.client.stop(dereg)
-
-
 class SntpClient:
     def __init__(self, config):
         self.timer = None
@@ -475,8 +312,6 @@ def stop():
         client.stop()
     if scanner is not None:
         scanner.stop()
-    if lwm2m_client is not None:
-        lwm2m_client.stop(True)
 
 
 # Load configuration
@@ -496,22 +331,12 @@ except:
     print("MQTT client configuration is invalid")
     raise
 
-# Instantiate the LwM2M client
-try:
-    lwm2m_client = LwM2MClient(config)
-except:
-    print("LwM2M client configuration is invalid")
-    raise
-
 # Instantiate the SNTP client
 try:
     sntp_client = SntpClient(config)
 except:
     print("SNTP client configuration is invalid")
     raise
-
-# Start the LwM2M client
-lwm2m_client.start()
 
 # Instantiate the BLE scanner
 scanner = Scanner()

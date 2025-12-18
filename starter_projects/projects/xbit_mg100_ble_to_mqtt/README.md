@@ -6,9 +6,6 @@ BL5340 DVK, etc.). This application provides a demonstration of the
 capability of these products to implement a gateway to relay BLE 
 advertisement data to an MQTT broker.
 
-This application also optionally connects to a LwM2M server for the
-purposes of device management.
-
 ## Loading onto the device
 
 The following files need to be loaded onto the Canvas device:
