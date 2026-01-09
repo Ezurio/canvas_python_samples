@@ -1,14 +1,8 @@
 """This sample demonstrates how to use the CAN bus.
+It uses loopback mode so a single board can send and receive CAN messages to itself without requiring another CAN device.
 
 Requirements:
 - Canvas Python firmrware that supports CAN bus hardware.
-  - Supported hardware: BL654 DVK with TCAN4550 connected to SPI bus and relevant IO.
-    CS - SIO_16 (gpio 0,16)
-    SCK - SIO_41 (gpio 1,9)
-    MOSI - SIO_40 (gpio 1,8)
-    MISO - SIO_04 (gpio 0,4)
-    reset - SIO_15 (gpio 0,15)
-    nINT - SIO_34 (gpio 1,2)
 """
 
 import canvas
@@ -18,11 +12,14 @@ MODE = CAN.MODE_LOOPBACK | CAN.MODE_FD
 CAN_MSG_INTERVAL_MS = 5000
 
 
-def can_cb(frame: tuple):
-    print("CAN RX: ", frame)
+def can_cb(_):
+    global can
+    print("CAN RX: ", can.read_frame())
 
 
 can = CAN(MODE, True, can_cb)
+can.add_filter(0, 0, 0)
+can.add_filter(0, 0, CAN.FILTER_IDE)
 count = 0
 
 
