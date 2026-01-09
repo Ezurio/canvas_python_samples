@@ -8,29 +8,49 @@ import os
 import time
 from machine import CAN
 from machine import Pin
+from canvas import Timer
 
 
 class Replier:
     def __init__(self):
-        self.REPLY_INTERVAL_MS = 100  # Interval to send replies
-        self.REPLY_TIMEOUT_MS = 500  # Timeout for sending a reply
+        self.CAN_SEND_TIMEOUT_MS = 100  # Timeout for sending a reply
+        self.CAN_RX_BUFFER_SIZE = 256  # Size of the CAN RX buffer
+        self.CAN_STATS_INTERVAL_MS = 250  # Interval to print CAN stats
         self.filters = []
         self.sleeping = True
-        self.can_queue = []
+        self.last_stats = None
+        self.stats_timer_running = False
 
         if "bl54l" in os.uname().machine:
             # Set WKP low to avoid excessive current draw on CAN FD 6 click
             wkp = Pin("P1_14", Pin.OUT, 0)
             wkp.off()
 
-        self.can = CAN(CAN.MODE_NORMAL, False, self.can_rx_callback)
+        self.stats_timer = Timer(
+            self.CAN_STATS_INTERVAL_MS, True, self.stats_timer_callback, None)
+        self.can = CAN(CAN.MODE_NORMAL, False,
+                       self.can_rx_callback, self.CAN_RX_BUFFER_SIZE)
         self.can_resume()
 
-    def can_rx_callback(self, frame: tuple):
-        try:
-            self.can_queue.append(frame)
-        except Exception as e:
-            print("Error appending frame to queue:", e)
+    def start_stats_timer(self):
+        if not self.stats_timer_running:
+            self.stats_timer_running = True
+            self.stats_timer.start()
+
+    def stop_stats_timer(self):
+        self.stats_timer_running = False
+        self.stats_timer.stop()
+
+    def can_rx_callback(self, _):
+        self.start_stats_timer()
+
+    def stats_timer_callback(self, _):
+        stats = self.stats(False)
+        if self.last_stats == stats:
+            self.stop_stats_timer()
+        else:
+            print("CAN stats: {}".format(stats))
+        self.last_stats = stats
 
     def can_sleep(self):
         for f in self.filters:
@@ -70,27 +90,24 @@ class Replier:
             print(stats)
         return stats
 
-    def send_reply(self):
-        if (len(self.can_queue) == 0):
+    def rx_and_reply(self):
+        # Default read timeout is important here to avoid consuming all CPU time
+        frame = self.can.read_frame()
+        if frame is None:
             return
-        print("Can queue length:", len(self.can_queue))
-        while len(self.can_queue) > 0:
-            frame = self.can_queue.pop(0)
-            can_id, rtr, data = frame
-            try:
-                # Increment the CAN ID for the reply to lower the priority and avoid collisions
-                self.can.send(can_id + 1, rtr, data, self.REPLY_TIMEOUT_MS)
-            except Exception as e:
-                print("Error sending:", e)
-        self.stats()
+        id, rtr, data = frame
+        try:
+            # Increment the CAN ID for the reply to lower the priority and avoid collisions
+            self.can.send(id + 1, rtr, data, self.CAN_SEND_TIMEOUT_MS)
+        except Exception as e:
+            print("Error sending:", e)
 
     def monitor_and_reply(self):
+        print("CAN bus started. Listening for frames...")
         self.can_resume()
         while True:
-            self.send_reply()
-            time.sleep_ms(self.REPLY_INTERVAL_MS)
+            self.rx_and_reply()
 
 
-print("CAN bus started. Listening for frames...")
 r = Replier()
 r.monitor_and_reply()
