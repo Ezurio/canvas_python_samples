@@ -1,29 +1,33 @@
 # https://www.mikroe.com/temp-hum-4-click
 # https://download.mikroe.com/documents/datasheets/hdc1010.pdf
-from machine import Pin
-from machine import I2C
-import os, time
+from machine import Pin, I2C
+import os
+import time
 
 MAX_CONVERSION_TIME_MS = 28
 
-# Avoid using floating point for boards that do not support it
+
 def convert_temp_c(raw):
     """Returns Temperature in Celsius"""
     return (raw * 165 // 65536) - 40
+
 
 def convert_temp_f(raw):
     """Returns Temperature in Fahrenheit"""
     return convert_temp_c(raw) * 9 // 5 + 32
 
+
 def convert_humidity(raw):
     """Returns Relative Humidity in Percent"""
     return raw * 100 // 65536
+
 
 def drdy_interrupt(v: int):
     """Data Ready Interrupt Handler"""
     print("i2c data ready\n")
 
-# The API is used differently with different operating systems
+
+# The API is used differently with different boards
 board = os.uname().machine
 if "lyra24" in board:
     lyra24 = True
@@ -31,6 +35,12 @@ if "lyra24" in board:
     AD1 = "PC03"
     DRDY_N = "PB03"
     I2C_DEV = ("I2C0", "PD03", "PD02")
+elif "bl54l" in board:
+    lyra24 = False
+    AD0 = "MB_RST"
+    AD1 = "MB_CS"
+    DRDY_N = "MB_INT"
+    I2C_DEV = "mikrobus_i2c"
 else:
     lyra24 = False
     AD0 = ("gpio@50000000", 31)
@@ -39,7 +49,7 @@ else:
     I2C_DEV = "i2c@40003000"
 
 # Setup the I2C
-addr = 0x40
+addr = 0x40 # NOTE: The address changes based on the AD0 and AD1 pin settings.
 i2c = I2C(I2C_DEV, addr)
 
 # Open drain output of HDC1010 must be pulled up.
